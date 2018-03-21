@@ -29,6 +29,6 @@
         ]
     },
     "scripts": {
-        "test": "phpunit tests/"
+        "test": "phpunit"
     }
 }
