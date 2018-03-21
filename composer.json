@@ -1,0 +1,34 @@
+{
+    "name": "fratily/http-message",
+    "type": "library",
+    "keywords": [
+        "fratily",
+        "psr-7",
+        "http-message"
+    ],
+    "authors": [
+        {
+            "name": "Kento Oka",
+            "email": "kento.oka@kentoka.com"
+        }
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^7.0",
+        "psr/http-message": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fratily\\Http\\Message\\": "src/"
+        },
+        "exclude-from-classmap": [
+            "src/Tests/"
+        ]
+    },
+    "scripts": {
+        "test": "phpunit tests/"
+    }
+}
