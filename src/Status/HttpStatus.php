@@ -20,6 +20,8 @@ abstract class HttpStatus extends \Exception{
 
     const STATUS_CODE   = 500;
 
+    const STATUS_PHRASE = null;
+
     const PHRASES   = [
         100 => "Continue",
         101 => "Switching Protocols",
