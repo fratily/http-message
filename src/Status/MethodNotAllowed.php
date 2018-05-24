@@ -39,7 +39,7 @@ class MethodNotAllowed extends HttpStatus{
      *
      * @param   string[]    $allowed
      *
-     * @return  void
+     * @return  $this
      */
     public function setAllowed(array $allowed){
         $this->allowed  = array_unique(
@@ -55,5 +55,7 @@ class MethodNotAllowed extends HttpStatus{
         if(empty($this->allowed)){
             $this->allowed  = null;
         }
+
+        return $this;
     }
 }
