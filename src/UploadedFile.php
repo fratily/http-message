@@ -22,11 +22,6 @@ use Psr\Http\Message\StreamInterface;
 class UploadedFile implements UploadedFileInterface{
 
     /**
-     * @var string
-     */
-    private $file;
-
-    /**
      * @var StreamInterface|null
      */
     private $stream;
@@ -68,28 +63,25 @@ class UploadedFile implements UploadedFileInterface{
      * @throws  \InvalidArgumentException
      */
     public function __construct(
-        $file,
+        StreamInterface $stream,
         int $size = null,
         int $error = UPLOAD_ERR_OK,
         string $clientFilename = null,
         string $clientMediaType = null
     ){
-        if(!isset(Exception\UploadedFileException::ERROR_MAP[$error])){
+        if($stream->getMetadata("wrapper_type") !== "plainfile"){
             throw new \InvalidArgumentException();
         }
 
-        if($error === UPLOAD_ERR_OK){
-            if(is_string($file) && is_file($file)){
-                $this->file = $file;
-            }else if(is_resource($file)){
-                $this->stream   = new Stream($file);
-            }else if($file instanceof StreamInterface){
-                $this->stream   = $file;
-            }else{
-                throw new \InvalidArgumentException();
-            }
+        if(!is_uploaded_file($stream->getMetadata("uri"))){
+            throw new \InvalidArgumentException;
         }
 
+        if(!array_key_exists($error, Exception\UploadErrorException::ERROR_MAP)){
+            throw new \InvalidArgumentException();
+        }
+
+        $this->stream           = $stream;
         $this->size             = $size;
         $this->error            = $error;
         $this->clientFilename   = $clientFilename;
@@ -103,20 +95,15 @@ class UploadedFile implements UploadedFileInterface{
      */
     public function getStream(){
         if($this->error !== UPLOAD_ERR_OK){
-            throw Exception\UploadedFileException::uploadError($this->error);
+            throw new Exception\UploadErrorException(
+                Exception\UploadErrorException::ERROR_MAP[$this->error]
+            );
         }
 
         if($this->moved){
-            throw Exception\UploadedFileException::moved();
-        }
-
-        if($this->stream === null){
-
-            if(($handle = fopen($this->file, "r")) === false){
-                throw new \RuntimeException;
-            }
-
-            $this->stream   = new Stream($handle);
+            throw new Exception\UploadFileIsMovedException(
+                ""
+            );
         }
 
         return $this->stream;
@@ -126,42 +113,30 @@ class UploadedFile implements UploadedFileInterface{
      * {@inheritdoc}
      */
     public function moveTo($targetPath){
-        if(!is_string($targetPath) || $targetPath === ""){
+        if(!is_string($targetPath)){
             throw new \InvalidArgumentException();
         }
 
         if($this->error !== UPLOAD_ERR_OK){
-            throw Exception\UploadedFileException::uploadError($this->error);
+            throw new Exception\UploadErrorException(
+                Exception\UploadErrorException::ERROR_MAP[$this->error]
+            );
         }
 
         if($this->moved){
-            throw Exception\UploadedFileException::moved();
+            throw new Exception\UploadFileIsMovedException(
+                ""
+            );
         }
 
-        if($this->file !== null){
-            if(is_uploaded_file($this->file)){
-                if(move_uploaded_file($this->file, $targetPath) === false){
-                    throw new \RuntimeException;
-                }
-            }else{
-                if(rename($this->file, $targetPath) === false){
-                    throw new \RuntimeException;
-                }
-            }
-        }else{
-            if(($handle = fopen($targetPath, "wb+"))){
-                throw new \RuntimeException;
-            }
+        if(($fp = fopen($targetPath, "w")) === false){
+            throw new \RuntimeException;
+        }
 
-            $stream = $this->getStream();
+        $this->stream->rewind();
 
-            $stream->rewind();
-
-            while(!$stream->eof()){
-                fwrite($handle, $stream->read(4096));
-            }
-
-            fclose($handle);
+        if(stream_copy_to_stream($this->stream->detach(), $fp) === false){
+            throw new \RuntimeException;
         }
 
         $this->moved    = true;
@@ -171,7 +146,7 @@ class UploadedFile implements UploadedFileInterface{
      * {@inheritdoc}
      */
     public function getSize(){
-        return $this->size ?? $this->getStream()->getSize();
+        return $this->size;
     }
 
     /**
