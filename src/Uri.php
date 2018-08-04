@@ -20,45 +20,13 @@ use Psr\Http\Message\UriInterface;
  */
 class Uri implements UriInterface{
 
-    const REGEX = "(?<scheme>https?)://(?:(?<userinfo>(?:%[0-9a-f][0-9a-f]|[0-9"
-        . "a-z-._~!$&'()*+,;=:])*)@)?(?<host>\[(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9"
-        . "a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,5})?|(?:[0-9a-f]"
-        . "|[1-9a-f][0-9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?:"
-        . ":(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,4})?|:(?:[0-9a-f]|[1-9a-f][0-"
-        . "9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a-f]"
-        . "|[1-9a-f][0-9a-f]{1,3})){0,3})?|:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})("
-        . "?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-"
-        . "9a-f]{1,3})){0,2})?|:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:(?:[0"
-        . "-9a-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3}))"
-        . "?)?|:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:[0-9a-f]|[1-9a-f][0-9"
-        . "a-f]{1,3})?|(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){3})))))|v[0-9a-f"
-        . "]\.(?:[0-9a-z-._~!$&'()*+,;=:])+)\]|(?:%[0-9a-f][0-9a-f]|[0-9a-z-._~"
-        . "!$&'()*+,;=])+)(?::(?<port>[1-9][0-9]*))?(?<path>(?:/(?:%[0-9a-f][0-"
-        . "9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*)*)(?:\?(?<query>(?:%[0-9a-f][0-9a-"
-        . "f]|[0-9a-z-._~!$&'()*+,;=:@/?[\]])*))?(?:#(?<fragment>(?:%[0-9a-f][0"
-        . "-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?])*))?";
-
-    const REGEX_SCHEME      = "https?";
-
-    const REGEX_USERINFO    = "(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:])*";
-
-    const REGEX_HOST        = "(\[(::(([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0-9a-"
-        . "f]|[1-9a-f][0-9a-f]{1,3})){0,5})?|([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:"
-        . ":(([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})"
-        . "){0,4})?|:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(::(([0-9a-f]|[1-9a-f][0-9"
-        . "a-f]{1,3})(:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,3})?|:([0-9a-f]|[1-9"
-        . "a-f][0-9a-f]{1,3})(::(([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0-9a-f]|[1"
-        . "-9a-f][0-9a-f]{1,3})){0,2})?|:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(::((["
-        . "0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0-9a-f]|[1-9a-f][0-9a-f]{1,3}))?)?"
-        . "|:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(::([0-9a-f]|[1-9a-f][0-9a-f]{1,3}"
-        . ")?|(:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})){3})))))|v[0-9a-f]\.([0-9a-z-."
-        . "_~!$&'()*+,;=:])+)\]|(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=])+)";
-
-    const REGEX_PATH        = "(/(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*)*";
-
-    const REGEX_QUERY       = "(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?[\]])*";
-
-    const REGEX_FRAGMENT    = "(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?])*";
+    const SCHEME    = 1;
+    const USERINFO  = 2;
+    const HOST      = 3;
+    const PORT      = 4;
+    const PATH      = 5;
+    const QUERY     = 6;
+    const FRAGMENT  = 7;
 
     const SCHEME_PORT_MAP   = [
         "http"      => 80,
@@ -105,23 +73,85 @@ class Uri implements UriInterface{
     private $fragment;
 
     /**
-     * URL文字列を構造ごとに分割する
+     * バリデーション
      *
-     * @param   string  $uri
+     * @param   int $parts
+     *  バリデーションするパーツ
+     * @param   string  $text
+     *  対象文字列
      *
-     * @return  string[]|bool
-     *      URLとして正しければ構造ごとに格納した配列を返す。空文字列や
-     *      存在しない部分はインデックスされない。URLとして正しくなければ
-     *      <b>FALSE</b>を返す。
+     * @return  bool
+     *
+     * @throws  \InvalidArgumentException
      */
-    public static function parseUri(string $uri){
-        if(!(bool)preg_match("`\A".self::REGEX."\z`i", $uri, $m)){
-            return false;
+    protected static function validate(int $parts, string $text = null){
+        switch($parts){
+            case self::SCHEME:
+                return $text === null
+                    || array_key_exists($text, self::SCHEME_PORT_MAP)
+                ;
+
+            case self::USERINFO:
+                return $text === null
+                    || (bool)preg_match(
+                        "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:])*\z`i",
+                        $text
+                    )
+                ;
+
+            case self::HOST:
+                return $text === null
+                    || (bool)preg_match(
+                        "`\A(\[(::(([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0-9a-f]|"
+                        . "[1-9a-f][0-9a-f]{1,3})){0,5})?|([0-9a-f]|[1-9a-f][0-"
+                        . "9a-f]{1,3})(::(([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0"
+                        . "-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,4})?|:([0-9a-f]|[1-"
+                        . "9a-f][0-9a-f]{1,3})(::(([0-9a-f]|[1-9a-f][0-9a-f]{1,"
+                        . "3})(:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,3})?|:([0-9"
+                        . "a-f]|[1-9a-f][0-9a-f]{1,3})(::(([0-9a-f]|[1-9a-f][0-"
+                        . "9a-f]{1,3})(:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,2})"
+                        . "?|:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(::(([0-9a-f]|[1-"
+                        . "9a-f][0-9a-f]{1,3})(:([0-9a-f]|[1-9a-f][0-9a-f]{1,3}"
+                        . "))?)?|:([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(::([0-9a-f]|"
+                        . "[1-9a-f][0-9a-f]{1,3})?|(:([0-9a-f]|[1-9a-f][0-9a-f]"
+                        . "{1,3})){3})))))|v[0-9a-f]\.([0-9a-z-._~!$&'()*+,;=:]"
+                        . ")+)\]|(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=])+)"
+                        . "\z`i",
+                        $text
+                    )
+                ;
+
+            case self::PORT:
+                return $text === null
+                    || (bool)preg_match("`\A[1-9][0-9]*\z`", $text)
+                ;
+
+            case self::PATH:
+                return $text === null
+                    || (bool)preg_match(
+                        "`\A(/(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*)*\z`i",
+                        $text
+                    )
+                ;
+
+            case self::QUERY:
+                return $text === null
+                    || (bool)preg_match(
+                        "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?[\]])*\z`i",
+                        $text
+                    )
+                ;
+
+            case self::FRAGMENT:
+                return $text === null
+                    || (bool)preg_match(
+                        "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?])*\z`i",
+                        $text
+                    )
+                ;
         }
 
-        return array_filter($m, function($v, $k){
-            return is_string($k) && $v !== "";
-        }, ARRAY_FILTER_USE_BOTH);
+        throw new \InvalidArgumentException("Undefine parts.");
     }
 
     /**
@@ -164,47 +194,69 @@ class Uri implements UriInterface{
     }
 
     /**
-     * URLデコードを行う
+     * Constructor
      *
-     * @param   string  $str
-     * @param   mixed   $mode
-     *      URLエンコードのタイプ
-     *
-     * @return  string
-     *
-     * @throws  \InvalidArgumentException
-     */
-    public static function urlDecode(string $str, $mode = self::URLENCODE_RFC3986){
-        switch($mode){
-            case self::URLENCODE_RFC3986:
-                return rawurldecode($str);
-
-            case self::URLENCODE_FORM:
-                return urldecode($str);
-        }
-
-        throw new \InvalidArgumentException();
-    }
-
-    /**
-     * Cconstructor
-     *
-     * @param   string  $uri
+     * @param   string  $scheme
+     *  scheme
+     * @param   string  $userinfo
+     *  user info
+     * @param   string  $host
+     *  host
+     * @param   int $port
+     *  port
+     * @param   string  $path
+     *  path
+     * @param   string  $query
+     *  query
+     * @param   string  $fragment
+     *  fragment
      *
      * @throws  \InvalidArgumentException
      */
-    public function __construct(string $uri){
-        if(($parts = self::parseUri($uri)) === false){
-            throw new \InvalidArgumentException();
+    public function __construct(
+        string $scheme = null,
+        string $userinfo = null,
+        string $host = null,
+        int $port = null,
+        string $path = null,
+        string $query = null,
+        string $fragment = null
+    ){
+        if(!self::validate(self::SCHEME, $scheme)){
+            throw new \InvalidArgumentException("Invalid scheme.");
         }
 
-        $this->scheme   = $parts["scheme"];
-        $this->userinfo = $parts["userinfo"] ?? null;
-        $this->host     = $parts["host"] ?? null;
-        $this->port     = ($parts["port"] ?? null) !== null ? (int)$parts["port"] : null;
-        $this->path     = $parts["path"] ?? "/";
-        $this->query    = $parts["query"] ?? null;
-        $this->fragment = $parts["fragment"] ?? null;
+        if(!self::validate(self::USERINFO, $userinfo)){
+            throw new \InvalidArgumentException("Invalid userinfo.");
+        }
+
+        if(!self::validate(self::HOST, $host)){
+            throw new \InvalidArgumentException("Invalid host.");
+        }
+
+        if(!self::validate(self::PORT, $port)){
+            throw new \InvalidArgumentException("Invalid port.");
+        }
+
+        if(!self::validate(self::PATH, $path)){
+            throw new \InvalidArgumentException("Invalid path.");
+        }
+
+        if(!self::validate(self::QUERY, $query)){
+            throw new \InvalidArgumentException("Invalid query.");
+        }
+
+        if(!self::validate(self::FRAGMENT, $fragment)){
+            throw new \InvalidArgumentException("Invalid fragment.");
+        }
+
+        $this->scheme   = $scheme;
+        $this->userinfo = $userinfo;
+        $this->host     = $host;
+        $this->port     = $port;
+        $this->path     = $path === "" ? null : $path;
+        $this->query    = $query === "" ? null : $query;
+        $this->fragment = $fragment === "" ? null : $fragment;
     }
 
     /**
@@ -333,8 +385,8 @@ class Uri implements UriInterface{
             throw new InvalidArgumentException();
         }
 
-        if(!(bool)preg_match("`\A".self::REGEX_SCHEME."\z`i", $scheme)){
-            throw new InvalidArgumentException();
+        if(!self::validate(self::SCHEME, $scheme)){
+            throw new \InvalidArgumentException("Invalid scheme.");
         }
 
         if($scheme === $this->scheme){
@@ -370,8 +422,8 @@ class Uri implements UriInterface{
                 $userinfo   .= ":" . self::urlEncode($password, self::URLENCODE_RFC3986);
             }
 
-            if(!(bool)preg_match("`\A".self::REGEX_USERINFO."\z`i", $userinfo)){
-                throw new \LogicException;
+            if(!self::validate(self::USERINFO, $userinfo)){
+                throw new \InvalidArgumentException("Invalid userinfo.");
             }
         }
 
@@ -393,8 +445,8 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException();
         }
 
-        if(!(bool)preg_match("`\A".self::REGEX_HOST."\z`i", $host)){
-            throw new \InvalidArgumentException();
+        if(!self::validate(self::HOST, $host)){
+            throw new \InvalidArgumentException("Invalid host.");
         }
 
         if($host === $this->host){
@@ -415,8 +467,8 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException();
         }
 
-        if(is_int($port) && ($port < 1 || 65535 < $port)){
-            throw new \InvalidArgumentException();
+        if(!self::validate(self::PORT, $port)){
+            throw new \InvalidArgumentException("Invalid port.");
         }
 
         if($port === $this->port){
@@ -437,8 +489,8 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException();
         }
 
-        if(!(bool)preg_match("`\A".self::REGEX_PATH."\z`i", $path)){
-            throw new \InvalidArgumentException();
+        if(!self::validate(self::PATH, $path)){
+            throw new \InvalidArgumentException("Invalid path.");
         }
 
         if($path === $this->path){
@@ -459,8 +511,8 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException();
         }
 
-        if(!(bool)preg_match("`\A".self::REGEX_QUERY."\z`i", $query)){
-            throw new \InvalidArgumentException();
+        if(!self::validate(self::QUERY, $query)){
+            throw new \InvalidArgumentException("Invalid query.");
         }
 
         if($query === $this->query){
@@ -483,8 +535,8 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException();
         }
 
-        if(!(bool)preg_match("`\A".self::REGEX_FRAGMENT."\z`i", $fragment)){
-            throw new \InvalidArgumentException();
+        if(!self::validate(self::FRAGMENT, $fragment)){
+            throw new \InvalidArgumentException("Invalid fragment.");
         }
 
         if($fragment === $this->fragment){
