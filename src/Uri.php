@@ -276,7 +276,7 @@ class Uri implements UriInterface{
      * {@inheritdoc}
      */
     public function getScheme(){
-        return $this->scheme;
+        return $this->scheme ?? "";
     }
 
     /**
@@ -387,6 +387,10 @@ class Uri implements UriInterface{
 
         if(!self::validate(self::SCHEME, $scheme)){
             throw new \InvalidArgumentException("Invalid scheme.");
+        }
+
+        if($scheme === ""){
+            $scheme = null;
         }
 
         if($scheme === $this->scheme){
