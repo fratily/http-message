@@ -250,9 +250,9 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException("Invalid fragment.");
         }
 
-        $this->scheme   = $scheme;
-        $this->userinfo = $userinfo;
-        $this->host     = $host;
+        $this->scheme   = $scheme === "" ? null : $scheme;
+        $this->userinfo = $userinfo === "" ? null : $userinfo;
+        $this->host     = $host === "" ? null : $host;
         $this->port     = $port;
         $this->path     = $path === "" ? null : $path;
         $this->query    = $query === "" ? null : $query;
@@ -453,6 +453,10 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException("Invalid host.");
         }
 
+        if($host === ""){
+            $host = null;
+        }
+
         if($host === $this->host){
             $return = $this;
         }else{
@@ -519,6 +523,10 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException("Invalid query.");
         }
 
+        if($query === ""){
+            $query = null;
+        }
+
         if($query === $this->query){
             $return = $this;
         }else{
@@ -541,6 +549,10 @@ class Uri implements UriInterface{
 
         if(!self::validate(self::FRAGMENT, $fragment)){
             throw new \InvalidArgumentException("Invalid fragment.");
+        }
+
+        if($fragment === ""){
+            $fragment = null;
         }
 
         if($fragment === $this->fragment){
