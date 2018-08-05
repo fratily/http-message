@@ -265,11 +265,11 @@ class Uri implements UriInterface{
     public function __toString(){
         $authority  = $this->getAuthority();
 
-        return ($this->scheme !== null ?$this->scheme . ":" : "")
+    return ($this->scheme !== null ? "{$this->scheme}:" : "")
             . ($authority !== "" ? "//{$authority}" : "")
             . $this->getPath()
-            . ($this->query !== null ? "?" . $this->query : "")
-            . ($this->fragment !== null ? "#" . $this->fragment : "");
+            . ($this->query !== null ? "?{$this->query}" : "")
+            . ($this->fragment !== null ? "#{$this->fragment}" : "");
     }
 
     /**
