@@ -17,6 +17,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
+use Psr\Http\Message\UriFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\UploadedFileFactoryInterface;
 
@@ -24,6 +25,11 @@ use Psr\Http\Message\UploadedFileFactoryInterface;
  *
  */
 class ServerRequestFactory implements ServerRequestFactoryInterface{
+
+    /**
+     * @var UriFactoryInterface
+     */
+    private $uriFactory         = null;
 
     /**
      * @var UploadedFileFactoryInterface
@@ -34,6 +40,31 @@ class ServerRequestFactory implements ServerRequestFactoryInterface{
      * @var StreamFactoryInterface
      */
     private $streamFactory      = null;
+
+    /**
+     * URIファクトリを取得する
+     *
+     * @return  UriFactoryInterface
+     */
+    public function getUriFactory(){
+        if(null === $this->uriFactory){
+            $this->uriFactory   = new UriFactory();
+        }
+
+        return $this->uriFactory;
+    }
+
+    /**
+     * URIファクトリを設定する
+     *
+     * @param   UriFactoryInterface $factory
+     *  URIファクトリインスタンス
+     *
+     * @return  void
+     */
+    public function setUriFactory(UriFactoryInterface $factory){
+        $this->uriFactory   = $factory;
+    }
 
     /**
      * ストリームファクトリを取得する
@@ -94,7 +125,7 @@ class ServerRequestFactory implements ServerRequestFactoryInterface{
         array $serverParams = []
     ): ServerRequestInterface{
         if(is_string($uri)){
-            $uri    = new Uri($uri);
+            $uri    = $this->getUriFactory()->createUri($uri);
         }else if(!$uri instanceof UriInterface){
             throw new \InvalidArgumentException();
         }
