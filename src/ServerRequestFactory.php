@@ -136,7 +136,7 @@ class ServerRequestFactory implements ServerRequestFactoryInterface{
             $serverParams,
             self::getUploadedFiles($_FILES),
             $_COOKIE,
-            self::getQueryParameters($_GET),
+            $_GET,
             self::getProtocolVersion($serverParams)
         );
     }
