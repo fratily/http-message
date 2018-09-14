@@ -53,7 +53,7 @@ class RedirectResponse extends Response{
         if($absolute){
             $path   = (string)$uri;
         }else{
-            $path   = $this->getPath()
+            $path   = $uri->getPath()
                 . (null === $uri->getQuery() ? "" : "?" . $uri->getQuery())
                 . (null === $uri->getFragment() ? "" : "#" . $uri->getFragment())
             ;
