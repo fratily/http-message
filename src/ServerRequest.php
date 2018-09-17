@@ -14,6 +14,7 @@
 namespace Fratily\Http\Message;
 
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Message\UriInterface;
 
@@ -24,22 +25,22 @@ class ServerRequest extends Request implements ServerRequestInterface{
     /**
      * @var mixed[]
      */
-    private $serverParams   = [];
+    private $sereverParameters;
 
     /**
      * @var UploadedFileInterface[]
      */
-    private $uploadedFiles  = [];
+    private $uploadedFiles;
 
     /**
      * @var mixed[]
      */
-    private $cookieParams   = [];
+    private $cookies;
 
     /**
      * @var mixed[]
      */
-    private $queryParams    = [];
+    private $queries;
 
     /**
      * @var null|mixed[]
@@ -49,106 +50,50 @@ class ServerRequest extends Request implements ServerRequestInterface{
     /**
      * @var mixed[]
      */
-    private $attributes     = [];
+    private $attributes;
 
-    /**
-     * UploadedFiles配列のバリデーションを行う
-     *
-     * @param   mixed   $uploadedFiles
-     * @return  bool
-     */
-    private static function validUploadedFiles($uploadedFiles){
-        if(!is_array($uploadedFiles)){
-            return false;
-        }
-
-        foreach($uploadedFiles as $file){
-            if(is_array($file)){
-                if(!self::validUploadedFiles($file)){
-                    return false;
-                }
-            }else if(!($file instanceof UploadedFileInterface)){
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * サーバーパラメータからHTTPリクエストヘッダーを抽出する
-     *
-     * @param   mixed[] $server
-     *
-     * @return  mixed[]
-     */
-    private static function extractionHeaders(array $server){
-        $return = [];
-
-        foreach($server as $key => $value){
-            if((bool)preg_match("/\AHTTP_[0-9A-Z!#$%&'*+\-.^_`|~]+\z/", $key)){
-                $key    = substr($key, 5);
-
-                if(strlen($key) > 0){
-                    $key    = implode(
-                        "-", array_map("ucfirst", explode("_", strtolower($key)))
-                    );
-
-                    $return[$key]   = $value;
-                }
-            }
-        }
-
-        return $return;
-    }
-
-    /**
-     * Constructor
-     *
-     * @param   string  $method
-     * @param   UriInterface $uri
-     * @param   mixed[] $serverParams
-     * @param   UploadedFileInterface[] $uploadedFiles
-     * @param   mixed[] $cookieParams
-     * @param   mixed[] $queryParams
-     * @param   string  $version
-     *
-     * @throws  \InvalidArgumentException
-     */
-    public function __construct(
+    public static function newInstance(
         string $method,
         UriInterface $uri,
-        array $serverParams = [],
-        array $uploadedFiles = [],
-        array $cookieParams = [],
-        array $queryParams = [],
-        string $version = "1.1"
+        array $serverParameters = [],
+        StreamInterface $body = null,
+        string $headers = [],
+        array $cookies = [],
+        array $queries = [],
+        array $uploadFiles = [],
+        array $attributes = [],
+        string $version = static::DEFAULT_PROTOCOL_VERSION
     ){
-        parent::__construct(
-            $method,
-            $uri,
-            self::extractionHeaders($serverParams),
-            ($body = new Stream\InputStream()),
-            $version
-        );
+        $instance   = parent::newInstance($method, $uri, $body, $headers, $version)
+            ->withCookieParams($cookies)
+            ->withQueryParams($queries)
+            ->withUploadedFiles($uploadFiles)
+            ->withParsedBody($instance->getBody())
+        ;
 
-        if(!self::validUploadedFiles($uploadedFiles)){
-            throw new \InvalidArgumentException();
-        }
+        $instance->serverParameters = $serverParameters;
+        $instance->attributes       = $attributes;
 
-        $this->serverParams     = $serverParams;
-        $this->uploadedFiles    = $uploadedFiles;
-        $this->cookieParams     = $cookieParams;
-        $this->queryParams      = $queryParams;
+        return $instance;
+    }
 
-        if(in_array($method, ["POST", "PUT", "PATCH"])
-            && ($server["CONTENT_TYPE"] ?? "") === "application/x-www-form-urlencoded"
-        ){
-            $body->rewind();
-            $content    = $body->getContents();
-            $body->rewind();
+    private static function validUploadedFiles(array $uploadedFiles, string $index = ""){
+        foreach($uploadedFiles as $key => $file){
+            $_index = "" === $index ? $key : ($index . "." . $key);
 
-            mb_parse_str($content, $this->parsedBody);
+            if(is_array($file)){
+                self::validUploadedFiles($file, $_index);
+                continue;
+            }
+
+            if(!is_subclass_of($file, UploadedFileInterface::class)){
+                $class  = UploadedFileInterface::class;
+
+                throw new \InvalidArgumentException(
+                    "Of the uploaded files, '{$_index}' is not an instance of"
+                    . " the class implementing {$class}"
+                );
+            }
         }
     }
 
@@ -156,7 +101,61 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function getServerParams(){
-        return $this->serverParams;
+        return $this->sereverParameters;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getCookieParams(){
+        return $this->cookies;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withCookieParams(array $cookies){
+        // ミドルウェアがクッキーの値をパースして再設定する可能性がある
+//        foreach($cookies as $key => $val){
+//            if(!is_scalar($val)){
+//                $type   = gettype($val);
+//
+//                throw new \InvalidArgumentException(
+//                    "The cookie list must be an associative array with scalar"
+//                    . " type values. The value of index {$key} is type {$type}."
+//                );
+//            }
+//        }
+
+        if($this->cookies === $cookies){
+            return $this;
+        }
+
+        $clone  = clone $this;
+        $clone->cookies = $cookies;
+
+        return $clone;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getQueryParams(){
+        return $this->queries;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withQueryParams(array $queries){
+        if($this->queries === $queries){
+            return $this;
+        }
+
+        $clone  = clone $this;
+        $clone->queries = $queries;
+
+        return $clone;
     }
 
     /**
@@ -170,48 +169,16 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function withUploadedFiles(array $uploadedFiles){
-        if(!self::validUploadedFiles($uploadedFiles)){
-            throw new \InvalidArgumentException();
+        self::validUploadedFiles($uploadedFiles);
+
+        if($this->uploadedFiles === $uploadedFiles){
+            return $this;
         }
 
-        $return = clone $this;
-        $return->uploadedFiles  = $uploadedFiles;
+        $clone                  = clone $this;
+        $clone->uploadedFiles   = $uploadedFiles;
 
-        return $return;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getCookieParams(){
-        return $this->cookieParams;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function withCookieParams(array $cookies){
-        $return = clone $this;
-        $return->cookieParams   = $cookies;
-
-        return $return;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getQueryParams(){
-        return $this->queryParams;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function withQueryParams(array $query){
-        $return = clone $this;
-        $return->queryParams    = $query;
-
-        return $return;
+        return $clone;
     }
 
     /**
@@ -225,14 +192,20 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function withParsedBody($data){
-        if($parsedBody !== null && !is_array($parsedBody) && !is_object($parsedBody)){
-            throw new \InvalidArgumentException();
+        if(null !== $data && !is_array($data) && !is_object($data)){
+            throw new \InvalidArgumentException(
+                "Parsed body must be null, array or object."
+            );
         }
 
-        $return = clone $this;
-        $return->parsedBody = $data;
+        if($this->parsedBody === $data){
+            return $this;
+        }
 
-        return $return;
+        $clone              = clone $this;
+        $clone->parsedBody  = $data;
+
+        return $clone;
     }
 
     /**
@@ -248,12 +221,17 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * @throws  \InvalidArgumentException
      */
     public function getAttribute($name, $default = null){
-        if(!is_scalar($name)){
-            throw new \InvalidArgumentException();
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "Attribute name must be a string"
+            );
         }
 
+        // ??を使うと属性値がnullかつデフォルト値が非nullの場合に正しく値が取得できない。
         return array_key_exists($name, $this->attributes)
-            ? $this->attributes[$name] : $default;
+            ? $this->attributes[$name]
+            : $default
+        ;
     }
 
     /**
@@ -262,20 +240,23 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * @throws  \InvalidArgumentException
      */
     public function withAttribute($name, $value){
-        if(!is_scalar($name)){
-            throw new \InvalidArgumentException();
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "Attribute name must be a string"
+            );
         }
 
-        if(array_key_exists($name, $this->attributes)
+        if(
+            array_key_exists($name, $this->attributes)
             && $this->attributes[$name] === $value
         ){
-            $return = $this;
-        }else{
-            $return = clone $this;
-            $return->attributes[$name]  = $value;
+            return $this;
         }
 
-        return $return;
+        $clone                      = clone $this;
+        $clone->attributes[$name]   = $value;
+
+        return $clone;
     }
 
     /**
@@ -284,17 +265,20 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * @throws  \InvalidArgumentException
      */
     public function withoutAttribute($name){
-        if(!is_scalar($name)){
-            throw new \InvalidArgumentException();
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "Attribute name must be a string"
+            );
         }
 
         if(!array_key_exists($name, $this->attributes)){
-            $return = $this;
-        }else{
-            $return = clone $this;
-            unset($return->attributes[$name]);
+            return $this;
         }
 
-        return $return;
+        $clone  = clone $this;
+
+        unset($clone->attributes[$name]);
+
+        return $clone;
     }
 }

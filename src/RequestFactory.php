@@ -13,9 +13,10 @@
  */
 namespace Fratily\Http\Message;
 
-use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\UriFactoryInterface;
 
 /**
  *
@@ -23,17 +24,64 @@ use Psr\Http\Message\RequestFactoryInterface;
 class RequestFactory implements RequestFactoryInterface{
 
     /**
-     * {@inheritdoc}
+     * @var UriFactoryInterface|null
+     */
+    private $uriFactory;
+
+    /**
+     * Constructor
      *
-     * @throws  \InvalidArgumentException
+     * @param   UriFactoryInterface $uriFactory
+     *  URIファクトリー
+     */
+    public function __construct(UriFactoryInterface $uriFactory = null){
+        $this->uriFactory   = $uriFactory;
+    }
+
+    /**
+     * URIファクトリを取得する
+     *
+     * @return  UriFactoryInterface
+     */
+    public function getUriFactory(){
+        if(null === $this->uriFactory){
+            $this->uriFactory   = new UriFactory();
+        }
+
+        return $this->uriFactory;
+    }
+
+    /**
+     * URIファクトリを登録する
+     *
+     * @param   UriFactoryInterface $uriFactory
+     *  URIファクトリ
+     *
+     * @return  $this;
+     */
+    public function setUriFactory(UriFactoryInterface $uriFactory){
+        $this->uriFactory   = $uriFactory;
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
      */
     public function createRequest(string $method, $uri): RequestInterface{
         if(is_string($uri)){
-            $uri    = new Uri($uri);
-        }else if(!$uri instanceof UriInterface){
-            throw new \InvalidArgumentException();
+            $uri    = $this->getUriFactory()->createUri($uri);
         }
 
-        return new Request($method, $uri);
+        if(!is_subclass_of($uri, UriInterface::class)){
+            $class  = UriInterface::class;
+
+            throw new \InvalidArgumentException(
+                "URI must be a string or an instance of a class"
+                . " that implements {$class}."
+            );
+        }
+
+        return Request::newInstance($method, $uri);
     }
 }

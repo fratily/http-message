@@ -13,20 +13,20 @@
  */
 namespace Fratily\Http\Message;
 
-use Psr\Http\Message\{
-    MessageInterface,
-    StreamInterface
-};
+use Psr\Http\Message\MessageInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * @todo    ヘッダーのHostは必ず1行目になければならない（外部に任せるかこちらでやってしまうか）
  */
 class Message implements MessageInterface{
 
+    const DEFAULT_PROTOCOL_VERSION = "1.1";
+
     const PROTOCOL_VERSION  = [
-        "1.0"   => 1,
-        "1.1"   => 2,
-        "2"     => 4
+        "1.0"   => true,
+        "1.1"   => true,
+        "2.0"   => true,
     ];
 
     const REGEX_NAME    = "/\A[0-9A-Z-!#$%&'*+.^_`|~]+\z/i";
@@ -35,24 +35,48 @@ class Message implements MessageInterface{
     const REGEX_VALUE   = "/\A([\x21-\x7e]([\x20\x09]+[\x21-\x7e])?)*\z/";
 
     /**
-     * @var string[]
+     * @var string[][]
      */
-    private $headers    = [];
+    protected $headers    = [];
 
     /**
      * @var string[]
      */
-    private $headerKeys = [];
+    protected $headerKeys = [];
 
     /**
      * @var StreamInterface
      */
-    private $body;
+    protected $body;
 
     /**
      * @var string
      */
-    private $version;
+    protected $version;
+
+    /**
+     * メッセージインスタンスを生成する
+     *
+     * @param   StreamInterface $body
+     *  メッセージボディ
+     * @param   string[]    $headers
+     *  メッセージヘッダー
+     * @param   string  $version
+     *  メッセージプロトコルバージョン
+     *
+     * @return  static
+     */
+    public static function newInstance(
+        StreamInterface $body = null,
+        array $headers = [],
+        string $version = static::DEFAULT_PROTOCOL_VERSION
+    ){
+        return (new static())
+            ->withBody($body ?? new Stream\MemoryStream())
+            ->withHeaders($headers)
+            ->withProtocolVersion($version)
+        ;
+    }
 
     /**
      * ヘッダーネームが正しいか確認する
@@ -61,8 +85,24 @@ class Message implements MessageInterface{
      *
      * @return  bool
      */
-    private static function validName(string $name){
-        return (bool)preg_match(self::REGEX_NAME, $name);
+    protected static function validHeaderName($name){
+        static $cache   = [];
+
+        if(!array_key_exists($name, $cache)){
+            if(!is_string($name)){
+                throw new \InvalidArgumentException(
+                    "Header name must be a string."
+                );
+            }
+
+            if(1 !== preg_match(static::REGEX_HEADER_NAME, $name)){
+                throw new \InvalidArgumentException(
+                    "'{$name}' is inappropriate as the header name."
+                );
+            }
+
+            $cache[$name]   = true;
+        }
     }
 
     /**
@@ -72,59 +112,50 @@ class Message implements MessageInterface{
      *
      * @return  bool
      */
-    private static function validValue($values){
-        foreach((array)$values as $value){
-            if(!is_scalar($value) || !(bool)preg_match(self::REGEX_VALUE, (string)$value)){
-                return false;
-            }
-        }
+    protected static function validHeaderValue($values){
+        static $cache   = [];
 
-        return true;
+        $single = !is_array($values);
+
+        foreach((array)$values as $index => $value){
+            if(array_key_exists($value, $cache)){
+                continue;
+            }
+
+            if(!is_string($value)){
+                throw new \InvalidArgumentException(
+                    "Header value must be a string or an array of strings."
+                );
+            }
+
+            if(1 !== preg_match(static::REGEX_HEADER_VALUE, $value)){
+                $info   = $single ? "" : "(index: {$index})";
+
+                throw new \InvalidArgumentException(
+                    "'{$value}'{$info} is inappropriate as a header value."
+                );
+            }
+
+            $cache[$value]  = true;
+        }
+    }
+
+    /**
+     * ヘッダーキーを取得する
+     *
+     * @param   string  $name
+     *  ヘッダー名
+     *
+     * @return  string
+     */
+    private static function getHeaderKey(string $name){
+        return strtolower($name);
     }
 
     /**
      * Constructor
-     *
-     * @param   mixed[] $headers
-     * @param   StreamInterface    $body
-     * @param   string  $version
-     *
-     * @throws \InvalidArgumentException
      */
-    public function __construct(
-        array $headers,
-        StreamInterface $body,
-        string $version = "1.1"
-    ){
-        if(!isset(self::PROTOCOL_VERSION[$version])){
-            throw new \InvalidArgumentException();
-        }
-
-        foreach($headers as $name => $values){
-            if(!self::validName($name)){
-                throw new \InvalidArgumentException("Invalid name");
-            }
-
-            if(!self::validValue($values)){
-                throw new \InvalidArgumentException("Invalid value");
-            }
-
-            $key    = strtolower($name);
-
-            $this->headerKeys[$key] = $this->headerKeys[$key] ?? $name;
-
-            if(isset($this->headers[$this->headerKeys[$key]])){
-                foreach((array)$values as $value){
-                    $this->headers[$this->headerKeys[$key]][]   = $value;
-                }
-            }else{
-                $this->headers[$this->headerKeys[$key]] = (array)$values;
-            }
-        }
-
-        $this->body     = $body;
-        $this->version  = $version;
-    }
+    protected function __construct(){}
 
     /**
      * {@inheritdoc}
@@ -137,18 +168,20 @@ class Message implements MessageInterface{
      * {@inheritdoc}
      */
     public function withProtocolVersion($version){
-        if(!isset(self::PROTOCOL_VERSION[$version])){
-            throw new \InvalidArgumentException();
+        if(!array_key_exists($version, self::PROTOCOL_VERSION)){
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
         if($this->version === $version){
-            $return = $this;
-        }else{
-            $return = clone $this;
-            $return->version    = $version;
+            return $this;
         }
 
-        return $return;
+        $clone          = clone $this;
+        $clone->version = $version;
+
+        return $clone;
     }
 
     /**
@@ -162,34 +195,36 @@ class Message implements MessageInterface{
      * {@inheritdoc}
      */
     public function hasHeader($name){
-        if(!self::validName($name)){
-            throw new \InvalidArgumentException("Invalid name");
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
-        return isset($this->headerKeys[strtolower($name)]);
+        return array_key_exists(self::getHeaderKey($name), $this->headerKeys);
     }
 
     /**
      * {@inheritdoc}
      */
     public function getHeader($name){
-        if(!self::validName($name)){
-            throw new \InvalidArgumentException("Invalid name");
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
-        if(!$this->hasHeader($name)){
-            return [];
-        }
-
-        return $this->headers[$this->headerKeys[strtolower($name)]];
+        return $this->headers[$this->headerKeys[self::getHeaderKey($name)]];
     }
 
     /**
      * {@inheritdoc}
      */
     public function getHeaderLine($name){
-        if(!self::validName($name)){
-            throw new \InvalidArgumentException("Invalid name");
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
         return implode(",", $this->getHeader($name));
@@ -199,73 +234,61 @@ class Message implements MessageInterface{
      * {@inheritdoc}
      */
     public function withHeader($name, $value){
-        if(!self::validName($name)){
-            throw new \InvalidArgumentException("Invalid name");
+        static::validHeaderName($name);
+        static::validHeaderValue($value);
+
+        if($this->hasHeader($name) && $this->getHeader($name) === $value){
+            return $this;
         }
 
-        if(!self::validValue($value)){
-            throw new \InvalidArgumentException("Invalid value");
-        }
+        $clone  = clone $this;
+        $clone  = $clone->withoutHeader($name);
 
-        $return = clone $this;
-        $key    = strtolower($name);
+        $clone->headerKeys[self::getHeaderKey($name)]   = $name;
+        $clone->headers[$name]                          = $value;
 
-        if(isset($return->headerKeys[$key])){
-            unset($return->headers[$return->headerKeys[$key]]);
-            unset($return->headerKeys[$key]);
-        }
-
-        $return->headerKeys[$key]   = $name;
-        $return->headers[$name]     = (array)$value;
-
-        return $return;
+        return $clone;
     }
 
     /**
      * {@inheritdoc}
      */
     public function withAddedHeader($name, $value){
-        if(!self::validName($name)){
-            throw new \InvalidArgumentException("Invalid name");
-        }
-
-        if(!self::validValue($value)){
-            throw new \InvalidArgumentException("Invalid value");
-        }
+        static::validHeaderName($name);
+        static::validHeaderValue($value);
 
         if(!$this->hasHeader($name)){
             return $this->withHeader($name, $value);
         }
 
-        $return = clone $this;
-        $key    = strtolower($name);
+        $clone  = clone $this;
+        $key    = self::getHeaderKey($name);
 
-        foreach((array)$value as $v){
-            $return->headers[$return->headerKeys[$key]][]   = $v;
-        }
+        $clone->headers[$clone->headerKeys[$key]]   = array_merge(
+            $clone->headers[$clone->headerKeys[$key]],
+            array_values((array)$value)
+        );
 
-        return $return;
+        return $clone;
     }
 
     /**
      * {@inheritdoc}
      */
     public function withoutHeader($name){
-        if(!self::validName($name)){
-            throw new \InvalidArgumentException("Invalid name");
-        }
+        static::validHeaderName($name);
 
         if(!$this->hasHeader($name)){
             return $this;
         }
 
-        $return = clone $this;
-        $key    = strtolower($name);
+        $clone  = clone $this;
+        $key    = self::getHeaderKey($name);
 
-        unset($return->headers[$return->headerKeys[$key]]);
-        unset($return->headerKeys[$key]);
+        unset($clone->headers[$clone->headerKeys[$key]]);
+        unset($clone->headerKeys[$key]);
 
-        return $return;
+        return $clone;
     }
 
     /**
@@ -280,12 +303,10 @@ class Message implements MessageInterface{
      */
     public function withBody(StreamInterface $body){
         if($this->body === $body){
-            $return = $this;
-        }else{
-            $return = clone $this;
-            $return->body   = $body;
+            return $this;
         }
 
-        return $return;
+        $clone          = clone $this;
+        $clone->body    = $body;
     }
 }

@@ -38,17 +38,19 @@ class StreamFactory implements StreamFactoryInterface{
      *  Path of temporary directory.
      * @param   string  $prefix
      *  Temporary file name prefix.
-     *
-     * @throws  \InvalidArgumentException
      */
     public function __construct(string $dir = null, string $prefix = ""){
-        if($dir === null){
-            $dir    = sys_get_temp_dir();
-        }else if(!is_dir($dir) || !is_writable($dir)){
-            throw new \InvalidArgumentException();
+        if(
+            null !== $dir
+            && (!is_dir($dir) || !is_writable($dir) || !is_readable($dir))
+        ){
+            throw new \InvalidArgumentException(
+                "The temporary file storage directory must be a directory"
+                . " that can be read and written."
+            );
         }
 
-        $this->dir      = realpath($dir);
+        $this->dir      = realpath($dir ?? sys_get_temp_dir());
         $this->prefix   = $prefix;
     }
 
@@ -59,13 +61,13 @@ class StreamFactory implements StreamFactoryInterface{
      * @throws  Exception\FileOpenException
      */
     public function createStream(string $content = ""): StreamInterface{
-        if(($path = tempnam($this->dir, $this->prefix)) === false){
+        if(false === ($path = tempnam($this->dir, $this->prefix))){
             throw new Exception\CreateTemporaryFileException(
                 "Attempted to create a temporary file in {$this->dir} but it failed."
             );
         }
 
-        if(file_put_contents($path, $content) === false){
+        if(false === file_put_contents($path, $content)){
             throw new Exception\FileWriteException("Failed to write to {$path}");
         }
 
@@ -78,7 +80,7 @@ class StreamFactory implements StreamFactoryInterface{
      * @throws  Exception\FileOpenException
      */
     public function createStreamFromFile(string $filename, string $mode = "r"): StreamInterface{
-        if(($resource = fopen($filename, $mode)) === false){
+        if(false === ($resource = fopen($filename, $mode))){
             throw new Exception\FileOpenException(
                 "{$filename} could not be opened in {$mode} mode"
             );
@@ -89,15 +91,9 @@ class StreamFactory implements StreamFactoryInterface{
 
     /**
      * {@inheritdoc}
-     *
-     * @throws  \InvalidArgumentException
      */
     public function createStreamFromResource($resource): StreamInterface{
         if(!is_resource($resource)){
-            throw new \InvalidArgumentException();
-        }
-
-        if(get_resource_type($resource) !== "stream"){
             throw new \InvalidArgumentException();
         }
 

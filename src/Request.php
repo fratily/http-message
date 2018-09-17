@@ -13,18 +13,16 @@
  */
 namespace Fratily\Http\Message;
 
-use Psr\Http\Message\{
-    RequestInterface,
-    StreamInterface,
-    UriInterface
-};
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  *
  */
 class Request extends Message implements RequestInterface{
 
-    const HTTP_METHODS  = [
+    const ALLOW_HTTP_METHODS    = [
         "GET"       => true,
         "HEAD"      => true,
         "POST"      => true,
@@ -44,45 +42,44 @@ class Request extends Message implements RequestInterface{
     private $uri;
 
     /**
-     * Constructor
+     * リクエストインスタンスを生成する
      *
      * @param   string  $method
+     *  HTTPリクエストメソッド
      * @param   UriInterface    $uri
-     * @param   mixed[] $headers
+     *  リクエストURI
      * @param   StreamInterface $body
+     *  メッセージボディ
+     * @param   string[]    $headers
+     *  メッセージヘッダー
      * @param   string  $version
+     *  メッセージプロトコルバージョン
      *
-     * @throws  \InvalidArgumentException
+     * @return  static
      */
-    public function __construct(
+    public static function newInstance(
         string $method,
         UriInterface $uri,
-        array $headers = [],
         StreamInterface $body = null,
-        string $version = "1.1"
+        array $headers = [],
+        string $version = static::DEFAULT_PROTOCOL_VERSION
     ){
-        if(!isset(self::HTTP_METHODS[$method])){
-            throw new \InvalidArgumentException();
-        }
-
-        parent::__construct(
-            $headers,
-            $body ?? new Stream\MemoryStream(),
-            $version
-        );
-
-        $this->method   = $method;
-        $this->uri      = $uri;
+        return parent::newInstance($body, $headers, $version)
+            ->withMethod($method)
+            ->withUri($uri, false)
+        ;
     }
 
     /**
      * {@inheritdoc}
      */
     public function getRequestTarget(){
-        $path   = $this->uri->getPath();
-        $query  = $this->uri->getQuery();
-
-        return $path . ($query !== "" ? "?{$query}" : "");
+        return
+            $this->uri->getPath()
+            . (
+                "" === $this->uri->getQuery() ? "" : "?{$this->uri->getQuery()}"
+            )
+        ;
     }
 
     /**
@@ -90,25 +87,27 @@ class Request extends Message implements RequestInterface{
      */
     public function withRequestTarget($requestTarget){
         if(!is_string($requestTarget)){
-            throw new \InvalidArgumentException();
+            throw new \InvalidArgumentException(
+                "Request target path must be a string."
+            );
         }
 
-        if(($pos = strpos($requestTarget, "?")) !== false){
+        $path   = $requestTarget;
+        $query  = "";
+
+        if(false !== ($pos = strpos($requestTarget, "?"))){
             $path   = substr($requestTarget, 0, $pos);
             $query  = substr($requestTarget, $pos + 1);
-        }else{
-            $path   = $requestTarget;
-            $query  = "";
         }
 
         if($this->uri->getPath() === $path && $this->uri->getQuery() === $query){
-            $return = $this;
-        }else{
-            $return         = clone $this;
-            $return->uri    = $this->getUri()->withPath($path)->withQuery($query);
+            return $this;
         }
 
-        return $return;
+        $clone      = clone $this;
+        $clone->uri = $clone->getUri()->withPath($query)->withQuery($query);
+
+        return $clone;
     }
 
     /**
@@ -123,21 +122,26 @@ class Request extends Message implements RequestInterface{
      */
     public function withMethod($method){
         if(!is_string($method)){
-            throw new \InvalidArgumentException();
+            throw new \InvalidArgumentException("Method must be a string");
         }
 
-        if(!isset(self::HTTP_METHODS[$method])){
-            throw new \InvalidArgumentException();
+        if(!array_key_exists($method, static::ALLOW_HTTP_METHODS)){
+            $allow  = implode(", ", static::ALLOW_HTTP_METHODS);
+
+            throw new \InvalidArgumentException(
+                "Method 'A' can not be used,"
+                . " because it is not included in the allowed method ({$allow})."
+            );
         }
 
         if($this->method === $method){
-            $return = $this;
-        }else{
-            $return         = clone $this;
-            $return->method = $method;
+            return $this;
         }
 
-        return $return;
+        $clone          = clone $this;
+        $clone->method  = $method;
+
+        return $clone;
     }
 
     /**
@@ -152,27 +156,34 @@ class Request extends Message implements RequestInterface{
      */
     public function withUri(UriInterface $uri, $preserveHost = false){
         if(!is_bool($preserveHost)){
-            throw new \InvalidArgumentException();
+            throw new \InvalidArgumentException(
+                "The host header preserve flag must be boolean."
+            );
         }
 
         if($this->uri === $uri){
-            $return = $this;
-        }else{
-            $return = clone $this;
-            $return->uri    = $uri;
+            return $this;
         }
 
-        $host   = $uri->getHost();
-        $port   = $uri->getPort();
+        $clone      = clone $this;
+        $clone->uri = $uri;
 
-        if(!$preserveHost && $host !== ""){
-            if($port !== null){
-                $host   = "{$host}:{$port}";
+        if(!$preserveHost){
+            if("" === $uri->getHost()){
+                throw new \InvalidArgumentException(
+                    "Host is not defined in URI instance,"
+                    . " host header can not be changed."
+                );
             }
 
-            $return = $return->withHeader("Host", $host);
+            $clone  = $clone->withHeader(
+                "Host",
+                null === $uri->getPort()
+                    ? $uri->getHost()
+                    : ($uri->getHost() . ":" . $uri->getPort())
+            );
         }
 
-        return $return;
+        return $clone;
     }
 }

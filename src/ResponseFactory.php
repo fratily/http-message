@@ -24,7 +24,9 @@ class ResponseFactory implements ResponseFactoryInterface{
     /**
      * {@inheritdoc}
      */
-    public function createResponse(int $code = 200, string $reasonPhrase = ''): ResponseInterface{
-        return new Response($code);
+    public function createResponse(int $code = 200, string $reasonPhrase = ""): ResponseInterface{
+        return Response::newInstance()
+            ->withStatus($code, $reasonPhrase)
+        ;
     }
 }

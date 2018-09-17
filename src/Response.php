@@ -13,10 +13,8 @@
  */
 namespace Fratily\Http\Message;
 
-use Psr\Http\Message\{
-    ResponseInterface,
-    StreamInterface
-};
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  *
@@ -24,37 +22,38 @@ use Psr\Http\Message\{
 class Response extends Message implements ResponseInterface{
 
     /**
-     * HTTP status code
-     *
      * @var int
      */
     private $code;
 
     /**
-     * Constructor
+     * @var string|null
+     */
+    private $reasonPhrase;
+
+    /**
+     * レスポンスインスタンスを生成する
      *
      * @param   int $code
-     * @param   mixed[] $headers
+     *  HTTPレスポンスステータスコード
      * @param   StreamInterface $body
+     *  メッセージボディ
+     * @param   string[]    $headers
+     *  メッセージヘッダー
+     * @param   string  $version
+     *  メッセージプロトコルバージョン
      *
-     * @throws  \InvalidArgumentException
+     * @return  static
      */
-    public function __construct(
+    public static function newInstance(
         int $code = 200,
-        array $headers = [],
-        StreamInterface $body = null
+        StreamInterface $body = null,
+        string $headers = [],
+        string $version = static::DEFAULT_PROTOCOL_VERSION
     ){
-        if(!Status\HttpStatus::isCode($code)){
-            throw new \InvalidArgumentException();
-        }
-
-        if($body !== null && (!$body->isWritable() || !$body->isReadable())){
-            throw new \InvalidArgumentException();
-        }
-
-        $this->code = $code;
-
-        parent::__construct($headers, $body ?? new Stream\MemoryStream());
+        return parent::newInstance($body, $headers, $version)
+            ->withStatusCode($code)
+        ;
     }
 
     /**
@@ -68,28 +67,51 @@ class Response extends Message implements ResponseInterface{
      * {@inheritoc}
      */
     public function getReasonPhrase(){
-        return Status\HttpStatus::PHRASES[$this->code];
+        return
+            $this->reasonPhrase
+            ?? Status\HttpStatus::PHRASES[$this->code]
+            ?? "Undefined"
+        ;
     }
 
     /**
      * {@inheritoc}
      */
     public function withStatus($code, $reasonPhrase = ""){
-        if(!is_int($code) || !Status\HttpStatus::isCode($code)){
-            throw new \InvalidArgumentException();
+        if(!is_int($code)){
+            throw new \InvalidArgumentException(
+                "The HTTP status code must be integer."
+            );
         }
 
         if(!is_string($reasonPhrase)){
-            throw new \InvalidArgumentException();
+            throw new \InvalidArgumentException(
+                "The HTTP status reason phrase must be string."
+            );
         }
 
-        if($this->code === $code){
-            $return = $this;
-        }else{
-            $return         = clone $this;
-            $return->code   = $code;
+        if(!array_key_exists($code, Status\HttpStatus::STATUS_CODE)){
+            throw new \InvalidArgumentException(
+                "Status code {$code} can not be used."
+            );
         }
 
-        return $return;
+        $reasonPhrase   = "" === $reasonPhrase ? null : $reasonPhrase;
+
+        if($this->code === $code && $this->reasonPhrase === $reasonPhrase){
+            return $this;
+        }
+
+        $clone  = clone $this;
+
+        if($clone->code !== $code){
+            $clone->code    = $code;
+        }
+
+        if($clone->reasonPhrase !== $reasonPhrase){
+            $clone->reasonPhrase    = $reasonPhrase;
+        }
+
+        return $clone;
     }
 }

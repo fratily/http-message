@@ -21,6 +21,17 @@ use Psr\Http\Message\StreamInterface;
  */
 class UploadedFile implements UploadedFileInterface{
 
+    const ERROR_MAP = [
+        UPLOAD_ERR_OK           => "The file uploaded with success.",
+        UPLOAD_ERR_INI_SIZE     => "The uploaded file exceeds the upload_max_filesize directive in php.ini.",
+        UPLOAD_ERR_FORM_SIZE    => "The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form.",
+        UPLOAD_ERR_PARTIAL      => "The uploaded file was only partially uploaded.",
+        UPLOAD_ERR_NO_FILE      => "No file was uploaded.",
+        UPLOAD_ERR_NO_TMP_DIR   => "Missing a temporary folder.",
+        UPLOAD_ERR_CANT_WRITE   => "Failed to write file to disk.",
+        UPLOAD_ERR_EXTENSION    => "A PHP extension stopped the file upload.",
+    ];
+
     /**
      * @var StreamInterface|null
      */
@@ -69,7 +80,7 @@ class UploadedFile implements UploadedFileInterface{
         string $clientFilename = null,
         string $clientMediaType = null
     ){
-        if($stream->getMetadata("wrapper_type") !== "plainfile"){
+        if("plainfile" !== $stream->getMetadata("wrapper_type")){
             throw new \InvalidArgumentException();
         }
 
@@ -77,7 +88,7 @@ class UploadedFile implements UploadedFileInterface{
             throw new \InvalidArgumentException;
         }
 
-        if(!array_key_exists($error, Exception\UploadErrorException::ERROR_MAP)){
+        if(!array_key_exists($error, static::ERROR_MAP)){
             throw new \InvalidArgumentException();
         }
 
@@ -94,15 +105,15 @@ class UploadedFile implements UploadedFileInterface{
      * @throws  Exception\UploadedFileException
      */
     public function getStream(){
-        if($this->error !== UPLOAD_ERR_OK){
+        if(UPLOAD_ERR_OK !== $this->error){
             throw new Exception\UploadErrorException(
-                Exception\UploadErrorException::ERROR_MAP[$this->error]
+                static::ERROR_MAP[$this->error]
             );
         }
 
         if($this->moved){
             throw new Exception\UploadFileIsMovedException(
-                ""
+                "The uploaded file has already been moved."
             );
         }
 
@@ -119,23 +130,31 @@ class UploadedFile implements UploadedFileInterface{
 
         if($this->error !== UPLOAD_ERR_OK){
             throw new Exception\UploadErrorException(
-                Exception\UploadErrorException::ERROR_MAP[$this->error]
+                static::ERROR_MAP[$this->error]
             );
         }
 
         if($this->moved){
             throw new Exception\UploadFileIsMovedException(
-                ""
+                "The uploaded file has already been moved."
             );
         }
 
-        if(($fp = fopen($targetPath, "w")) === false){
-            throw new \RuntimeException;
+        if(is_dir($targetPath)){
+            throw new Exception\UploadFileMoveException(
+                "Failed to move the file because the target file path is a directory."
+            );
+        }
+
+        if(false === ($target = fopen($targetPath, "w"))){
+            throw new Exception\UploadFileMoveException(
+                "Failed to get resource of target file."
+            );
         }
 
         $this->stream->rewind();
 
-        if(stream_copy_to_stream($this->stream->detach(), $fp) === false){
+        if(stream_copy_to_stream($this->stream->detach(), $target) === false){
             throw new \RuntimeException;
         }
 

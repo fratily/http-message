@@ -20,6 +20,11 @@ use Psr\Http\Message\StreamInterface;
  */
 class Stream implements StreamInterface{
 
+    const EXCEPTION_MSG_UNAVAILABLE = "The stream is already closed.";
+    const EXCEPTION_MSG_UNREADABLE  = "Attempt to read to unreadable resource.";
+    const EXCEPTION_MSG_UNSEEKABLE  = "Attempt to seek to unseekable resource.";
+    const EXCEPTION_MSG_UNWRITABLE  = "Attempt to write to writable resource";
+
     /**
      * @var resource|null
      * @todo    このクラスを継承したクラスにもこれへのアクセスを許可する
@@ -31,16 +36,16 @@ class Stream implements StreamInterface{
      * Constructor
      *
      * @param   resource    $resource
-     *
-     * @throws  \InvalidArgumentException
+     *  ストリームリソース
      */
     public function __construct($resource){
-        if(!is_resource($resource)){
-            throw new \InvalidArgumentException();
-        }
-
-        if(get_resource_type($resource) !== "stream"){
-            throw new \InvalidArgumentException();
+        if(
+            !is_resource($resource)
+            || "stream" !== get_resource_type($resource)
+        ){
+            throw new \InvalidArgumentException(
+                "It must be a stream type resource."
+            );
         }
 
         $this->resource = $resource;
@@ -50,27 +55,28 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function __toString(){
-        $return = "";
-        $offset = null;
+        return $this->getContents();
+    }
 
-        try{
-            if($this->isReadable()){
-                if($this->isSeekable()){
-                    $offset = $this->tell();
-                    $this->rewind();
-                }
-
-                $return = $this->getContents();
-            }
-        }catch(Exception $e){
-
-        }finally{
-            if($offset !== null){
-                $this->seek($offset, SEEK_SET);
-            }
+    /**
+     * リソースを登録する
+     *
+     * @param   resource    $resource
+     *  ストリームリソース
+     *
+     * @return  void
+     */
+    public function attach($resource){
+        if(
+            !is_resource($resource)
+            || "stream" !== get_resource_type($resource)
+        ){
+            throw new \InvalidArgumentException(
+                "It must be a stream type resource."
+            );
         }
 
-        return $return;
+        $this->resource = $resource;
     }
 
     /**
@@ -88,7 +94,7 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function detach(){
-        $return = $this->resource;
+        $return         = $this->resource;
         $this->resource = null;
 
         return $return;
@@ -98,7 +104,7 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function getSize(){
-        if($this->resource === null){
+        if(null === $this->resource){
             return null;
         }
 
@@ -109,14 +115,17 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      *
      * @throws  Exception\StreamUnavailableException
+     * @throws  \RuntimeException
      */
     public function tell(){
-        if($this->resource === null){
-            throw new Exception\StreamUnavailableException();
+        if(null === $this->resource){
+            throw new Exception\StreamUnavailableException(
+                static::EXCEPTION_MSG_UNAVAILABLE
+            );
         }
 
-        if(($point = ftell($this->resource)) === false){
-            throw new \RuntimeException;
+        if(false === ($point = ftell($this->resource))){
+            throw new \RuntimeException("Failed to get file pointer position.");
         }
 
         return $point;
@@ -126,7 +135,7 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function eof(){
-        if($this->resource === null){
+        if(null === $this->resource){
             return true;
         }
 
@@ -137,19 +146,19 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function isSeekable(){
-        if($this->resource !== null){
-            return (bool)($this->getMetadata("seekable") ?? false);
+        if(null === $this->resource){
+            return false;
         }
 
-        return false;
+        return (bool)($this->getMetadata("seekable") ?? false);
     }
 
     /**
      * {@inheritdoc}
      *
-     * @throws  \InvalidArgumentException
      * @throws  Exception\StreamUnavailableException
      * @throws  Exception\StreamUnseekableException
+     * @throws  \RuntimeException
      */
     public function seek($offset, $whence = SEEK_SET){
         if(!is_int($offset)){
@@ -160,16 +169,20 @@ class Stream implements StreamInterface{
             throw new \InvalidArgumentException();
         }
 
-        if($this->resource === null){
-            throw new Exception\StreamUnavailableException();
+        if(null === $this->resource){
+            throw new Exception\StreamUnavailableException(
+                static::EXCEPTION_MSG_UNAVAILABLE
+            );
         }
 
         if(!$this->isSeekable()){
-            throw new Exception\StreamUnseekableException();
+            throw new Exception\StreamUnseekableException(
+                static::EXCEPTION_MSG_UNSEEKABLE
+            );
         }
 
-        if(fseek($this->resource, $offset, $whence) !== 0){
-            throw new \RuntimeException;
+        if(0 !== fseek($this->resource, $offset, $whence)){
+            throw new \RuntimeException("Failed to seek file pointer.");
         }
 
         return $this;
@@ -180,6 +193,7 @@ class Stream implements StreamInterface{
      *
      * @throws  Exception\StreamUnavailableException
      * @throws  Exception\StreamUnseekableException
+     * @throws  \RuntimeException
      */
     public function rewind(){
         return $this->seek(0, SEEK_SET);
@@ -189,45 +203,49 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function isWritable(){
-        if($this->resource !== null){
-            $mode   = $this->getMetadata("mode");
-
-            if($mode !== null){
-                return strpos($mode, "x") !== false
-                    || strpos($mode, "w") !== false
-                    || strpos($mode, "a") !== false
-                    || strpos($mode, "c") !== false
-                    || strpos($mode, "+") !== false;
-            }
+        if(null === $this->resource){
+            return false;
         }
 
-        return false;
+        if(null === ($mode = $this->getMetadata("mode"))){
+            return false;
+        }
+
+        return
+            strpos($mode, "x") !== false
+            || strpos($mode, "w") !== false
+            || strpos($mode, "a") !== false
+            || strpos($mode, "c") !== false
+            || strpos($mode, "+") !== false
+        ;
     }
 
     /**
      * {@inheritdoc}
      *
-     * @throws  \InvalidArgumentException
      * @throws  Exception\StreamUnavailableException
      * @throws  Exception\StreamUnwritableException
+     * @throws  \RuntimeException
      */
     public function write($string){
-        if(!is_scalar($string)){
+        if(!is_string($string)){
             throw new \InvalidArgumentException();
         }
 
-        if($this->resource === null){
-            throw new Exception\StreamUnavailableException();
+        if(null === $this->resource){
+            throw new Exception\StreamUnavailableException(
+                static::EXCEPTION_MSG_UNAVAILABLE
+            );
         }
 
         if(!$this->isWritable()){
-            throw new Exception\StreamUnwritableException();
+            throw new Exception\StreamUnwritableException(
+                static::EXCEPTION_MSG_UNWRITABLE
+            );
         }
 
-        $bytes  = fwrite($this->resource, (string)$string);
-
-        if($bytes === false){
-            throw new \RuntimeException();
+        if(false === ($bytes = fwrite($this->resource, $string))){
+            throw new \RuntimeException("Failed to write to the stream.");
         }
 
         return $bytes;
@@ -237,42 +255,47 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function isReadable(){
-        if($this->resource !== null){
-            $mode   = $this->getMetadata("mode");
-
-            if($mode !== null){
-                return strpos($mode, "r") !== false
-                    || strpos($mode, "+") !== false;
-            }
+        if(null === $this->resource){
+            return false;
         }
 
-        return false;
+        if(null === ($mode = $this->getMetadata("mode"))){
+            return false;
+        }
+
+        return
+            strpos($mode, "r") !== false
+            || strpos($mode, "+") !== false
+        ;
+
     }
 
     /**
      * {@inheritdoc}
      *
-     * @throws  \InvalidArgumentException
      * @throws  Exception\StreamUnavailableException
      * @throws  Exception\StreamUnreadableException
+     * @throws  \RuntimeException
      */
     public function read($length){
         if(!is_int($length)){
             throw new \InvalidArgumentException();
         }
 
-        if($this->resource === null){
-            throw new Exception\StreamUnavailableException();
+        if(null === $this->resource){
+            throw new Exception\StreamUnavailableException(
+                static::EXCEPTION_MSG_UNAVAILABLE
+            );
         }
 
         if(!$this->isReadable()){
-            throw new Exception\StreamUnreadableException();
+            throw new Exception\StreamUnreadableException(
+                static::EXCEPTION_MSG_UNREADABLE
+            );
         }
 
-        $contents   = fread($this->resource, $length);
-
-        if($contents === false){
-            throw new \RuntimeException();
+        if(false === ($contents = fread($this->resource, $length))){
+            throw new \RuntimeException("Failed to read stream.");
         }
 
         return $contents;
@@ -283,20 +306,23 @@ class Stream implements StreamInterface{
      *
      * @throws  Exception\StreamUnavailableException
      * @throws  Exception\StreamUnreadableException
+     * @throws  \RuntimeException
      */
     public function getContents(){
-        if($this->resource === null){
-            throw new Exception\StreamUnavailableException;
+        if(null === $this->resource){
+            throw new Exception\StreamUnavailableException(
+                static::EXCEPTION_MSG_UNAVAILABLE
+            );
         }
 
         if(!$this->isReadable()){
-            throw new Exception\StreamUnreadableException;
+            throw new Exception\StreamUnreadableException(
+                static::EXCEPTION_MSG_UNREADABLE
+            );
         }
 
-        $contents   = stream_get_contents($this->resource);
-
-        if($contents === false){
-            throw new \RuntimeException();
+        if(false === ($contents = stream_get_contents($this->resource))){
+            throw new \RuntimeException("Failed to read stream.");
         }
 
         return $contents;
@@ -305,7 +331,6 @@ class Stream implements StreamInterface{
     /**
      * {@inheritdoc}
      *
-     * @throws  \InvalidArgumentException
      * @throws  Exception\StreamUnavailableException
      */
     public function getMetadata($key = null){
@@ -313,14 +338,16 @@ class Stream implements StreamInterface{
             throw new \InvalidArgumentException();
         }
 
-        if($this->resource === null){
-            throw new Exception\StreamUnavailableException;
+        if(null === $this->resource){
+            throw new Exception\StreamUnavailableException(
+                static::EXCEPTION_MSG_UNAVAILABLE
+            );
         }
 
         $meta   = stream_get_meta_data($this->resource);
 
-        if($key !== null){
-            $meta   = $meta[$key] ?? null;
+        if(null !== $key){
+            return $meta[$key] ?? null;
         }
 
         return $meta;

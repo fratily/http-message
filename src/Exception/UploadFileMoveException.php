@@ -13,5 +13,5 @@
  */
 namespace Fratily\Http\Message\Exception;
 
-class UploadErrorException extends \RuntimeException{
+class UploadFileMoveException extends \RuntimeException{
 }
