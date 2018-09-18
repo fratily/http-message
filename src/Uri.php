@@ -30,8 +30,12 @@ class Uri implements UriInterface{
 
     const REGEX_SCHEME  = "`\A[a-z][0-9a-z-+.]*\z`i";
 
-    const REGEX_USERINFO    = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:])*"
-        . "\z`i"
+    const REGEX_USERINFO_USER   = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;="
+        . "])*\z`i"
+    ;
+
+    const REGEX_USERINFO_PASS   = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;:"
+        . "=])*\z`i"
     ;
 
     const REGEX_HOST    = "`\A(\[(::(([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0-9a-f"
@@ -240,17 +244,21 @@ class Uri implements UriInterface{
             throw new InvalidArgumentException();
         }
 
+        if("" !== $user && 1 !== preg_match(static::REGEX_USERINFO_USER, $user)){
+            throw new \InvalidArgumentException();
+        }
+
+        if(null !== $password && 1 !== preg_match(static::REGEX_USERINFO_PASS, $password)){
+            throw new \InvalidArgumentException();
+        }
+
         $userinfo   = implode(
             ":",
             [
                 $user,
-                "" === $user ? null : $password
+                "" === $user ? "" : ($password ?? "")
             ]
         );
-
-        if(1 !== preg_match(self::REGEX_USERINFO, $user)){
-            throw new \InvalidArgumentException();
-        }
 
         if($this->userinfo == $userinfo){
             return $this;
