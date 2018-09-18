@@ -28,7 +28,7 @@ class Emitter implements EmitterInterface{
      * @throws  \RuntimeException
      */
     public function emit(ResponseInterface $response, int $bufferSize = 4096){
-        while(ob_get_level() > 0){
+        while(0 < ob_get_level()){
             ob_end_flush();
         }
 
@@ -37,7 +37,7 @@ class Emitter implements EmitterInterface{
             $this->emitHeaders($response);
         }
 
-        if($response->getBody()->getSize() > 0){
+        if(0 < $response->getBody()->getSize()){
             $this->emitBody($response, $bufferSize);
         }
     }
@@ -52,11 +52,13 @@ class Emitter implements EmitterInterface{
     protected function emitHttpStatus(ResponseInterface $response){
         $phrese = $response->getReasonPhrase();
 
-        header(sprintf("HTTP/%s %d%s",
-            $response->getProtocolVersion(),
-            $response->getStatusCode(),
-            $phrese === "" ? "" : " {$phrese}"
-        ));
+        header(
+            sprintf("HTTP/%s %d%s",
+                $response->getProtocolVersion(),
+                $response->getStatusCode(),
+                "" === $phrese ? "" : " {$phrese}"
+            )
+        );
     }
 
     /**
@@ -89,10 +91,10 @@ class Emitter implements EmitterInterface{
      * @throws  \InvalidArgumentException
      */
     protected function emitBody(ResponseInterface $response, int $bufferSize){
-        if($bufferSize < 1){
+        if(1 > $bufferSize){
             throw new \InvalidArgumentException();
         }
-        
+
         //  NO Content と Not Modified はボディが必要ない
         if(in_array($response->getStatusCode(), [204, 304])){
             return;
