@@ -21,23 +21,38 @@ use Psr\Http\Message\UriFactoryInterface;
  */
 class UriFactory implements UriFactoryInterface{
 
-    const REGEX_URI = "(?<scheme>[a-z][0-9a-z-+.]*)://(?:(?<userinfo>(?:%[0-9a-"
-        . "f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:])*)@)?(?<host>\[(?:::(?:(?:[0-9a-"
-        . "f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,5"
-        . "})?|(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f][0"
-        . "-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,4})?|:(?:[0-9a"
-        . "-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})"
-        . "(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,3})?|:(?:[0-9a-f]|[1-9a-f]"
-        . "[0-9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a"
-        . "-f]|[1-9a-f][0-9a-f]{1,3})){0,2})?|:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3"
-        . "})(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f]"
-        . "[0-9a-f]{1,3}))?)?|:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:[0-9a-"
-        . "f]|[1-9a-f][0-9a-f]{1,3})?|(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){3"
-        . "})))))|v[0-9a-f]\.(?:[0-9a-z-._~!$&'()*+,;=:])+)\]|(?:%[0-9a-f][0-9a"
-        . "-f]|[0-9a-z-._~!$&'()*+,;=])+)(?::(?<port>[1-9][0-9]*))?(?<path>(?:/"
-        . "(?:%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*)*)(?:\?(?<query>(?:"
-        . "%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?[\]])*))?(?:#(?<fragment"
-        . ">(?:%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?])*))?"
+    /**
+     * このURIファクトリで受け付けるURI文字列の正規表現
+     *
+     * RFCで定義されているURIに必ずしも一致するわけではないことに注意
+     *
+     * 以下のような文字列に一致する
+     *
+     * - http://userinfo@example.com:8080/path?query#fragment
+     * - file:///var/www/html/index.html
+     * - //userinfo@example.com:8080/path?query#fragment
+     * - /path?query#fragment
+     *
+     * @var string
+     */
+    const REGEX_URI = "`\A(?:(?<scheme>[a-z][0-9a-z-+.]*):)?(?://(?:(?:(?<useri"
+        . "nfo>(?:%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:])*)@)?(?<host>\[(?:"
+        . "::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-9a"
+        . "-f]{1,3})){0,5})?|(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:(?:[0-9a"
+        . "-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,"
+        . "4})?|:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f]"
+        . "[0-9a-f]{1,3})(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,3})?|:(?:[0-"
+        . "9a-f]|[1-9a-f][0-9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3"
+        . "})(?::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})){0,2})?|:(?:[0-9a-f]|[1-9a-"
+        . "f][0-9a-f]{1,3})(?:::(?:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})(?::(?:[0-"
+        . "9a-f]|[1-9a-f][0-9a-f]{1,3}))?)?|:(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})"
+        . "(?:::(?:[0-9a-f]|[1-9a-f][0-9a-f]{1,3})?|(?::(?:[0-9a-f]|[1-9a-f][0-"
+        . "9a-f]{1,3})){3})))))|v[0-9a-f]\.(?:[0-9a-z-._~!$&'()*+,;=:])+)\]|(?:"
+        . "%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=])+)(?::(?<port>[1-9][0-9]*)"
+        . ")?)?)?(?<path>(?:/(?:%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*)*"
+        . ")(?:\?(?<query>(?:%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?[\]])*"
+        . "))?(?:#(?<fragment>(?:%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?])"
+        . "*))?\z`i"
     ;
 
     /**
@@ -46,40 +61,49 @@ class UriFactory implements UriFactoryInterface{
      * @param   string  $uri
      *
      * @return  string[]|bool
-     *      URLとして正しければ構造ごとに格納した配列を返す。空文字列や
-     *      存在しない部分はインデックスされない。URLとして正しくなければ
-     *      <b>FALSE</b>を返す。
      */
     public static function parseUri(string $uri){
-        if(!(bool)preg_match("`\A" . self::REGEX . "\z`i", $uri, $m)){
+        if(1 !== preg_match(static::REGEX_URI, $uri, $m)){
             return false;
         }
 
-        return array_filter($m, function($v, $k){
-            return is_string($k) && $v !== "";
-        }, ARRAY_FILTER_USE_BOTH);
+        $result = [
+            "scheme"    => $m["scheme"] ?? "",
+            "userinfo"  => $m["userinfo"] ?? "",
+            "host"      => $m["host"] ?? "",
+            "port"      => $m["port"] ?? null,
+            "path"      => $m["path"] ?? "",
+            "query"     => $m["query"] ?? "",
+            "fragment"  => $m["fragment"] ?? "",
+        ];
+
+        if(null !== $result["port"]){
+            $result["port"] = (int)$result["port"];
+        }
+
+        return $result;
     }
 
     /**
      * {@inheritdoc}
      */
     public function createUri(string $uri = ""): UriInterface{
-        if($uri === ""){
+        if("" === $uri){
             return new Uri();
         }
 
-        if(($parts = self::parseUri($uri)) === false){
-            throw new \InvalidArgumentException("Failed to parse URI.");
+        if(false === ($parts = self::parseUri($uri))){
+            throw new \InvalidArgumentException();
         }
 
         return new Uri(
             $parts["scheme"],
-            $parts["userinfo"] ?? null,
+            $parts["userinfo"],
             $parts["host"],
-            $parts["port"] ?? null,
-            $parts["path"] ?? null,
-            $parts["query"] ?? null,
-            $parts["fragment"] ?? null
+            $parts["port"],
+            $parts["path"],
+            $parts["query"],
+            $parts["fragment"]
         );
     }
 }

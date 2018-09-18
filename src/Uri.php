@@ -331,7 +331,7 @@ class Uri implements UriInterface{
      * {@inheritdoc}
      */
     public function getPath(){
-        return $this->path;
+        return ("/" === substr($this->path, 0, 1) ? "" : "/") . $this->path;
     }
 
     /**
