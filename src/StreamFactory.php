@@ -58,7 +58,7 @@ class StreamFactory implements StreamFactoryInterface{
      * {@inheritdoc}
      *
      * @throws  Exception\CreateTemporaryFileException
-     * @throws  Exception\FileOpenException
+     * @throws  Exception\FileWriteException
      */
     public function createStream(string $content = ""): StreamInterface{
         if(false === ($path = tempnam($this->dir, $this->prefix))){
