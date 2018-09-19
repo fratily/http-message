@@ -71,15 +71,11 @@ class UriFactory implements UriFactoryInterface{
             "scheme"    => $m["scheme"] ?? "",
             "userinfo"  => $m["userinfo"] ?? "",
             "host"      => $m["host"] ?? "",
-            "port"      => $m["port"] ?? null,
+            "port"      => "" === $m["port"] ? null : (int)$m["port"],
             "path"      => $m["path"] ?? "",
             "query"     => $m["query"] ?? "",
             "fragment"  => $m["fragment"] ?? "",
         ];
-
-        if(null !== $result["port"]){
-            $result["port"] = (int)$result["port"];
-        }
 
         return $result;
     }
