@@ -20,16 +20,18 @@
         "psr/http-message": "^1.0",
         "psr/http-factory": "^1.0"
     },
-    "require-dev": {
-        "phpunit/phpunit": "^6.0"
-    },
     "autoload": {
         "psr-4": {
             "Fratily\\Http\\Message\\": "src/"
-        },
-        "exclude-from-classmap": [
-            "src/Tests/"
-        ]
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fratily\\Tests\\Http\\Message\\": "tests/"
+        }
     },
     "scripts": {
         "test": "phpunit"
