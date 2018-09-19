@@ -31,11 +31,11 @@ class Uri implements UriInterface{
     const REGEX_SCHEME  = "`\A[a-z][0-9a-z-+.]*\z`i";
 
     const REGEX_USERINFO_USER   = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;="
-        . "])*\z`i"
+        . "])+\z`i"
     ;
 
     const REGEX_USERINFO_PASS   = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;:"
-        . "=])*\z`i"
+        . "=])+\z`i"
     ;
 
     const REGEX_HOST    = "`\A(\[(::(([0-9a-f]|[1-9a-f][0-9a-f]{1,3})(:([0-9a-f"
@@ -57,11 +57,11 @@ class Uri implements UriInterface{
     ;
 
     const REGEX_QUERY   = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?[\]]"
-        . ")*\z`i"
+        . ")+\z`i"
     ;
 
     const REGEX_FRAGMENT    = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?"
-        . "])*\z`i"
+        . "])+\z`i"
     ;
 
     const URLENCODE_RFC3986 = "rfc3986";
