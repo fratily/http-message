@@ -244,6 +244,8 @@ class Uri implements UriInterface{
             throw new InvalidArgumentException();
         }
 
+        $password   = "" === $password ? null : $password;
+
         if("" !== $user && 1 !== preg_match(static::REGEX_USERINFO_USER, $user)){
             throw new \InvalidArgumentException();
         }
@@ -252,13 +254,10 @@ class Uri implements UriInterface{
             throw new \InvalidArgumentException();
         }
 
-        $userinfo   = implode(
-            ":",
-            [
-                $user,
-                "" === $user ? "" : ($password ?? "")
-            ]
-        );
+        $userinfo   = ("" === $user || null === $password)
+            ? $user
+            : $user . ":" . $password
+        ;
 
         if($this->userinfo == $userinfo){
             return $this;
