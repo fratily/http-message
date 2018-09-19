@@ -52,8 +52,8 @@ class Uri implements UriInterface{
         . "i"
     ;
 
-    const REGEX_PATH    = "`\A(/(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*)"
-        . "*\z`i"
+    const REGEX_PATH    = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*(/("
+        . "%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@])*)*\z`i"
     ;
 
     const REGEX_QUERY   = "`\A(%[0-9a-f][0-9a-f]|[0-9a-z-._~!$&'()*+,;=:@/?[\]]"
