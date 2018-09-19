@@ -85,14 +85,14 @@ class UriFactory implements UriFactoryInterface{
      */
     public function createUri(string $uri = ""): UriInterface{
         if("" === $uri){
-            return new Uri();
+            return Uri::newInstance();
         }
 
         if(false === ($parts = self::parseUri($uri))){
             throw new \InvalidArgumentException();
         }
 
-        return new Uri(
+        return Uri::newInstance(
             $parts["scheme"],
             $parts["userinfo"],
             $parts["host"],
