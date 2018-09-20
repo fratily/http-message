@@ -165,23 +165,38 @@ class Message implements MessageInterface{
     }
 
     /**
-     * {@inheritdoc}
+     *
+     *
+     * @param   string  $version
+     *  Protocol version
+     *
+     * @return  $this
+     *
+     * @throws  \InvalidArgumentException
      */
-    public function withProtocolVersion($version){
+    protected function setProtocolVersion(string $version){
         if(!array_key_exists($version, self::PROTOCOL_VERSION)){
             throw new \InvalidArgumentException(
                 ""
             );
         }
 
+        $this->version  = $version;
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withProtocolVersion($version){
         if($this->version === $version){
             return $this;
         }
 
-        $clone          = clone $this;
-        $clone->version = $version;
+        $clone  = clone $this;
 
-        return $clone;
+        return $clone->setProtocolVersion($version);
     }
 
     /**
@@ -230,53 +245,75 @@ class Message implements MessageInterface{
         return implode(",", $this->getHeader($name));
     }
 
+    protected function setHeader(string $name, array $values){
+        static::validHeaderName($name);
+        static::validHeaderValue($values);
+
+        if(!$this->hasHeader($name) || $this->getHeader($name) !== $values){
+            $key                    = self::getHeaderKey($name);
+            $this->headerKeys[$key] = $name;
+            $this->headers[$name]   = array_values($values);
+        }
+
+        return $this;
+    }
+
+    protected function addHeader(string $name, array $values){
+        if($this->hasHeader($name)){
+            $key    = $this->headerKeys[self::getHeaderKey($name)];
+            $values = array_merge($this->headers[$key], $values);
+        }
+
+        return $this->setHeader($name, $values);
+    }
+
+    protected function removeHeader(string $name){
+        if($this->hasHeader($name)){
+            $key    = $this->headerKeys[self::getHeaderKey($name)];
+
+            unset($this->headers[$key]);
+        }
+
+        return $this;
+    }
+
     /**
      * {@inheritdoc}
      */
     public function withHeader($name, $value){
-        static::validHeaderName($name);
-        static::validHeaderValue($value);
-
-        if($this->hasHeader($name) && $this->getHeader($name) === $value){
-            return $this;
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
         $clone  = clone $this;
-        $clone  = $clone->withoutHeader($name);
 
-        $clone->headerKeys[self::getHeaderKey($name)]   = $name;
-        $clone->headers[$name]                          = $value;
-
-        return $clone;
+        return $clone->setHeader($name, (array)$value);
     }
 
     /**
      * {@inheritdoc}
      */
     public function withAddedHeader($name, $value){
-        static::validHeaderName($name);
-        static::validHeaderValue($value);
-
-        if(!$this->hasHeader($name)){
-            return $this->withHeader($name, $value);
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
         $clone  = clone $this;
-        $key    = self::getHeaderKey($name);
 
-        $clone->headers[$clone->headerKeys[$key]]   = array_merge(
-            $clone->headers[$clone->headerKeys[$key]],
-            array_values((array)$value)
-        );
-
-        return $clone;
+        return $clone->addHeader($name, (array)$value);
     }
 
     /**
      * {@inheritdoc}
      */
     public function withoutHeader($name){
-        static::validHeaderName($name);
+        if(!is_string($name)){
+
+        }
 
         if(!$this->hasHeader($name)){
             return $this;
