@@ -78,6 +78,6 @@ class ServerRequestFactory implements ServerRequestFactoryInterface{
             );
         }
 
-        return ServerRequest::newInstance($method, $uri, $serverParams);
+        return new ServerRequest($method, $uri, $serverParams);
     }
 }

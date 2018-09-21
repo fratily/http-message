@@ -29,10 +29,10 @@ class Message implements MessageInterface{
         "2.0"   => true,
     ];
 
-    const REGEX_NAME    = "/\A[0-9A-Z-!#$%&'*+.^_`|~]+\z/i";
+    const REGEX_HEADER_NAME     = "/\A[0-9A-Z-!#$%&'*+.^_`|~]+\z/i";
 
     //  改行を含む値はRFC7230的には非推奨
-    const REGEX_VALUE   = "/\A([\x21-\x7e]([\x20\x09]+[\x21-\x7e])?)*\z/";
+    const REGEX_HEADER_VALUE    = "/\A([\x21-\x7e]([\x20\x09]+[\x21-\x7e])?)*\z/";
 
     /**
      * @var string[][]
@@ -47,7 +47,7 @@ class Message implements MessageInterface{
     /**
      * @var StreamInterface
      */
-    private $body;
+    private $body       = null;
 
     /**
      * @var string
@@ -67,26 +67,43 @@ class Message implements MessageInterface{
     }
 
     /**
-     * Constructor
+     * ヘッダーの名前と値のバリデーションを行う
      *
-     * @param   StreamInterface $body
-     *  メッセージボディ
-     * @param   string[]    $headers
-     *  メッセージヘッダー
-     * @param   string  $version
-     *  メッセージプロトコルバージョン
+     * @param   mixed   $name
+     *  ヘッダー名
+     * @param   mixed   $value
+     *  ヘッダーの値
+     *
+     * @return  void
+     *
+     * @throws  \InvalidArgumentException
      */
-    public function __construct(
-        StreamInterface $body = null,
-        array $headers = [],
-        string $version = static::DEFAULT_PROTOCOL_VERSION
-    ){
-        foreach($headers as $name => $values){
-            $this->setHeader($name, $values);
+    private static function withHeaderValidation($name, $value){
+        if(!is_string($name) || 1 !== preg_match(static::REGEX_HEADER_NAME, $name)){
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
-        $this->setBody($body ?? new Stream\MemoryStream());
-        $this->setProtocolVersion($version);
+        if(!is_string($value) && !is_array($value)){
+            throw new \InvalidArgumentException(
+                ""
+            );
+        }
+
+        $value  = is_string($value) ? [$value] : $value;
+
+        foreach($value as $_value){
+            if(1 !== preg_match(static::REGEX_HEADER_VALUE, $_value)){
+                throw new \InvalidArgumentException(
+                    ""
+                );
+            }
+        }
+    }
+
+    public function __construct(){
+        $this->version  = static::DEFAULT_PROTOCOL_VERSION;
     }
 
     /**
@@ -97,16 +114,9 @@ class Message implements MessageInterface{
     }
 
     /**
-     *
-     *
-     * @param   string  $version
-     *  Protocol version
-     *
-     * @return  $this
-     *
-     * @throws  \InvalidArgumentException
+     * {@inheritdoc}
      */
-    protected function setProtocolVersion($version){
+    public function withProtocolVersion($version){
         if(!is_string($version)){
             throw new \InvalidArgumentException(
                 ""
@@ -119,22 +129,14 @@ class Message implements MessageInterface{
             );
         }
 
-        $this->version  = $version;
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function withProtocolVersion($version){
         if($this->version === $version){
             return $this;
         }
 
-        $clone  = clone $this;
+        $clone          = clone $this;
+        $clone->version = $version;
 
-        return $clone->setProtocolVersion($version);
+        return $clone;
     }
 
     /**
@@ -148,7 +150,7 @@ class Message implements MessageInterface{
      * {@inheritdoc}
      */
     public function getHeader($name){
-        if(!$this->hasHeader($name)){
+        if(!is_string($name) || !$this->hasHeader($name)){
             return [];
         }
 
@@ -173,60 +175,6 @@ class Message implements MessageInterface{
         return array_key_exists(self::getHeaderKey($name), $this->headerKeys);
     }
 
-    protected function setHeader(string $name, array $values){
-        if(!is_string($name)){
-            throw new \InvalidArgumentException(
-                ""
-            );
-        }
-
-        if(1 !== preg_match(static::REGEX_HEADER_NAME, $name)){
-            throw new \InvalidArgumentException(
-                ""
-            );
-        }
-
-        foreach($values as $index => $value){
-            if(!is_string($value)){
-                throw new \InvalidArgumentException(
-                    ""
-                );
-            }
-
-            if(1 !== preg_match(static::REGEX_HEADER_VALUE, $value)){
-                throw new \InvalidArgumentException(
-                    ""
-                );
-            }
-        }
-
-        $key                    = self::getHeaderKey($name);
-        $this->headerKeys[$key] = $name;
-        $this->headers[$name]   = array_values($values);
-
-        return $this;
-    }
-
-    protected function addHeader($name, $values){
-        if($this->hasHeader($name)){
-            $key    = $this->headerKeys[self::getHeaderKey($name)];
-            $values = array_merge($this->headers[$key], $values);
-        }
-
-        return $this->setHeader($name, (array)$values);
-    }
-
-    protected function removeHeader($name){
-        if(is_string($name) && $this->hasHeader($name)){
-            $key    = self::getHeaderKey($name);
-
-            unset($this->headers[$this->headerKeys[$key]]);
-            unset($this->headerKeys[$key]);
-        }
-
-        return $this;
-    }
-
     /**
      * {@inheritdoc}
      */
@@ -235,22 +183,37 @@ class Message implements MessageInterface{
             return $this;
         }
 
-        $clone  = clone $this;
+        static::withHeaderValidation($name, $value);
 
-        return $clone->setHeader($name, (array)$value);
+        $clone  = clone $this;
+        $key    = self::getHeaderKey($name);
+        $value  = is_string($value) ? [$value] : $value;
+
+        $clone->headerKeys[$key] = $name;
+        $clone->headers[$name]   = array_values($value);
+
+        return $clone;
     }
 
     /**
      * {@inheritdoc}
      */
     public function withAddedHeader($name, $value){
-        if($this->hasHeader($name) && $this->getHeader($name) === $value){
-            return $this;
+        if(!$this->hasHeader($name)){
+            return $this->withHeader($name, $value);
         }
 
-        $clone  = clone $this;
+        static::withHeaderValidation($name, $value);
 
-        return $clone->addHeader($name, $value);
+        $clone  = clone $this;
+        $key    = self::getHeaderKey($name);
+
+        $clone->headers[$this->headerKeys[$key]]    = array_merge(
+            $clone->headers[$this->headerKeys[$key]],
+            array_values(is_string($value) ? [$value] : $value)
+        );
+
+        return $clone;
     }
 
     /**
@@ -261,22 +224,26 @@ class Message implements MessageInterface{
             return $this;
         }
 
-        $clone  = clone $this;
+        static::withHeaderValidation($name, []);
 
-        return $clone->removeHeader($name);
+        $clone  = clone $this;
+        $key    = self::getHeaderKey($name);
+
+        unset($clone->headers[$this->headerKeys[$key]]);
+        unset($clone->headerKeys[$key]);
+
+        return $clone;
     }
 
     /**
      * {@inheritdoc}
      */
     public function getBody(){
+        if(null === $this->body){
+            $this->body = new Stream\MemoryStream();
+        }
+
         return $this->body;
-    }
-
-    protected function setBody(StreamInterface $body){
-        $this->body = $body;
-
-        return $this;
     }
 
     /**
@@ -287,8 +254,9 @@ class Message implements MessageInterface{
             return $this;
         }
 
-        $clone  = clone $this;
+        $clone          = clone $this;
+        $clone->body    = $body;
 
-        return $clone->setBody($body);
+        return $clone;
     }
 }

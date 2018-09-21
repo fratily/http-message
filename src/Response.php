@@ -14,7 +14,6 @@
 namespace Fratily\Http\Message;
 
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\StreamInterface;
 
 /**
  *
@@ -32,28 +31,21 @@ class Response extends Message implements ResponseInterface{
     private $reasonPhrase;
 
     /**
-     * レスポンスインスタンスを生成する
+     * Constructor
      *
      * @param   int $code
      *  HTTPレスポンスステータスコード
-     * @param   StreamInterface $body
-     *  メッセージボディ
-     * @param   string[]    $headers
-     *  メッセージヘッダー
-     * @param   string  $version
-     *  メッセージプロトコルバージョン
-     *
-     * @return  static
+     * @param   string  $reasonPhrase
+     *  HTTPレスポンスステータスメッセージ
      */
-    public static function newInstance(
+    public function __construct(
         int $code = 200,
-        StreamInterface $body = null,
-        string $headers = [],
-        string $version = static::DEFAULT_PROTOCOL_VERSION
+        string $reasonPhrase = null
     ){
-        return parent::newInstance($body, $headers, $version)
-            ->withStatusCode($code)
-        ;
+        $this->code         = $code;
+        $this->reasonPhrase = $reasonPhrase;
+
+        parent::__construct();
     }
 
     /**

@@ -198,7 +198,9 @@ class Uri implements UriInterface{
         }
 
         if("" !== $scheme && 1 !== preg_match(static::REGEX_SCHEME, $scheme)){
-            throw new \InvalidArgumentException();
+            throw new \InvalidArgumentException(
+                ""
+            );
         }
 
         if($this->scheme === $scheme){

@@ -14,7 +14,6 @@
 namespace Fratily\Http\Message;
 
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Message\UriInterface;
 
@@ -33,48 +32,33 @@ class ServerRequest extends Request implements ServerRequestInterface{
     private $uploadedFiles;
 
     /**
-     * @var mixed[]
+     * @var null|mixed[]
      */
-    private $cookies;
-
-    /**
-     * @var mixed[]
-     */
-    private $queries;
+    private $cookies    = null;
 
     /**
      * @var null|mixed[]
      */
-    private $parsedBody;
+    private $queries    = null;
+
+    /**
+     * @var null|mixed[]|object
+     */
+    private $parsedBody = null;
 
     /**
      * @var mixed[]
      */
-    private $attributes;
+    private $attributes = [];
 
-    public static function newInstance(
+    public function __construct(
         string $method,
         UriInterface $uri,
-        array $serverParameters = [],
-        StreamInterface $body = null,
-        string $headers = [],
-        array $cookies = [],
-        array $queries = [],
-        array $uploadFiles = [],
-        array $attributes = [],
-        string $version = static::DEFAULT_PROTOCOL_VERSION
+        array $serverParameters = null
     ){
-        $instance   = parent::newInstance($method, $uri, $body, $headers, $version)
-            ->withCookieParams($cookies)
-            ->withQueryParams($queries)
-            ->withUploadedFiles($uploadFiles)
-            ->withParsedBody($instance->getBody())
-        ;
+        parent::__construct($method, $uri);
 
-        $instance->serverParameters = $serverParameters;
-        $instance->attributes       = $attributes;
-
-        return $instance;
+        $this->sereverParameters    = $serverParameters ?? $_SERVER;
     }
 
     private static function validUploadedFiles(array $uploadedFiles, string $index = ""){
@@ -108,6 +92,10 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function getCookieParams(){
+        if(null === $this->cookies){
+            $this->cookies  = $_COOKIE;
+        }
+
         return $this->cookies;
     }
 
@@ -131,7 +119,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
             return $this;
         }
 
-        $clone  = clone $this;
+        $clone          = clone $this;
         $clone->cookies = $cookies;
 
         return $clone;
@@ -141,6 +129,10 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function getQueryParams(){
+        if(null === $this->queries){
+            $this->queries  = $_GET;
+        }
+
         return $this->queries;
     }
 
@@ -152,7 +144,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
             return $this;
         }
 
-        $clone  = clone $this;
+        $clone          = clone $this;
         $clone->queries = $queries;
 
         return $clone;
@@ -185,6 +177,10 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function getParsedBody(){
+        if(null === $this->parsedBody && "GET" !== $this->getMethod()){
+            $this->parsedBody   = $_POST;
+        }
+
         return $this->parsedBody;
     }
 

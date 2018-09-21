@@ -14,7 +14,6 @@
 namespace Fratily\Http\Message;
 
 use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 
 /**
@@ -42,32 +41,27 @@ class Request extends Message implements RequestInterface{
     private $uri;
 
     /**
-     * リクエストインスタンスを生成する
+     * Constructor
      *
      * @param   string  $method
      *  HTTPリクエストメソッド
      * @param   UriInterface    $uri
      *  リクエストURI
-     * @param   StreamInterface $body
-     *  メッセージボディ
-     * @param   string[]    $headers
-     *  メッセージヘッダー
-     * @param   string  $version
-     *  メッセージプロトコルバージョン
-     *
-     * @return  static
      */
-    public static function newInstance(
+    public function __construct(
         string $method,
-        UriInterface $uri,
-        StreamInterface $body = null,
-        array $headers = [],
-        string $version = static::DEFAULT_PROTOCOL_VERSION
+        UriInterface $uri
     ){
-        return parent::newInstance($body, $headers, $version)
-            ->withMethod($method)
-            ->withUri($uri, false)
-        ;
+        if(!array_key_exists($method, static::ALLOW_HTTP_METHODS)){
+            throw new \InvalidArgumentException(
+                ""
+            );
+        }
+
+        $this->method   = $method;
+        $this->uri      = $uri;
+
+        parent::__construct();
     }
 
     /**
@@ -77,7 +71,9 @@ class Request extends Message implements RequestInterface{
         return
             $this->uri->getPath()
             . (
-                "" === $this->uri->getQuery() ? "" : "?{$this->uri->getQuery()}"
+                "" === $this->uri->getQuery()
+                    ? ""
+                    : "?" . $this->uri->getQuery()
             )
         ;
     }
@@ -88,7 +84,7 @@ class Request extends Message implements RequestInterface{
     public function withRequestTarget($requestTarget){
         if(!is_string($requestTarget)){
             throw new \InvalidArgumentException(
-                "Request target path must be a string."
+                ""
             );
         }
 
@@ -105,7 +101,7 @@ class Request extends Message implements RequestInterface{
         }
 
         $clone      = clone $this;
-        $clone->uri = $clone->getUri()->withPath($query)->withQuery($query);
+        $clone->uri = $clone->uri->withPath($path)->withQuery($query);
 
         return $clone;
     }
@@ -117,6 +113,21 @@ class Request extends Message implements RequestInterface{
         return $this->method;
     }
 
+    protected function setMethod(string $method){
+        if(!array_key_exists($method, static::ALLOW_HTTP_METHODS)){
+            $allow  = implode(", ", static::ALLOW_HTTP_METHODS);
+
+            throw new \InvalidArgumentException(
+                "Method '{$method}' can not be used,"
+                . " because it is not included in the allowed method ({$allow})."
+            );
+        }
+
+        $this->method   = $method;
+
+        return $this;
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -126,11 +137,8 @@ class Request extends Message implements RequestInterface{
         }
 
         if(!array_key_exists($method, static::ALLOW_HTTP_METHODS)){
-            $allow  = implode(", ", static::ALLOW_HTTP_METHODS);
-
             throw new \InvalidArgumentException(
-                "Method 'A' can not be used,"
-                . " because it is not included in the allowed method ({$allow})."
+                ""
             );
         }
 

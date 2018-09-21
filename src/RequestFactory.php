@@ -82,6 +82,6 @@ class RequestFactory implements RequestFactoryInterface{
             );
         }
 
-        return Request::newInstance($method, $uri);
+        return new Request($method, $uri);
     }
 }
