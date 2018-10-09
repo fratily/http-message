@@ -102,4 +102,95 @@ class UriFactory implements UriFactoryInterface{
             $parts["fragment"]
         );
     }
+
+    /**
+     * グローバルな値からリクエストURIを作成する
+     *
+     * @return  UriInterface
+     */
+    public function createUriFromGlobal(): UriInterface{
+        return new Uri(
+            $this->resolveScheme()
+            . "://"
+            . $this->resolveAuthority()
+            . $this->resolvePathAndQuery()
+        );
+    }
+
+
+    /**
+     * サーバー変数からスキームを解決する
+     *
+     * @return  string
+     */
+    private static function resolveScheme(){
+        $scheme = filter_input(INPUT_SERVER, "REQUEST_SCHEME");
+        $https  = filter_input(INPUT_SERVER, "HTTPS");
+
+        if(is_string($scheme)){
+            return strtolower($scheme);
+        }
+
+        if(null !== $https){
+            if(is_bool($https)){
+                return $https ? "https" : "http";
+            }
+
+            return "off" === $https ? "http" : "https";
+        }
+
+        return "http";
+    }
+
+    /**
+     * サーバー変数からホストとポートを解決する
+     *
+     * @return  string
+     */
+    private static function resolveAuthority(){
+        $host   = filter_input(INPUT_SERVER, "HTTP_HOST");
+
+        if(is_string($host)){
+            return $host;
+        }
+
+        $port   = filter_input(INPUT_SERVER, "REQUEST_PORT", FILTER_VALIDATE_INT);
+        $name   = filter_input(INPUT_SERVER, "SERVER_NAME");
+
+        if(false === $port){
+            throw new \RuntimeException();
+        }
+
+        if(is_string($name)){
+            return $name . (null === $port ? "" : (":" . $port));
+        }
+
+        $addrv4 = filter_input(INPUT_SERVER, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+        $addrv6 = filter_input(INPUT_SERVER, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+
+        if(is_string($addrv4)){
+            return $addrv4 . (null === $port ? "" : (":" . $port));
+        }
+
+        if(is_string($addrv6)){
+            return "[" . $addrv6. "]" . (null === $port ? "" : (":" . $port));
+        }
+
+        throw new \RuntimeException;
+    }
+
+    /**
+     * サーバー変数からパスを解決する
+     *
+     * @return  string
+     */
+    private static function resolvePathAndQuery(array $server){
+        $path   = filter_input(INPUT_SERVER, "REQUEST_URI");
+
+        if(is_string($path)){
+            return $path;
+        }
+
+        return "/";
+    }
 }
