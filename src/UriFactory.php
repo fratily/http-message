@@ -184,7 +184,7 @@ class UriFactory implements UriFactoryInterface{
      *
      * @return  string
      */
-    private static function resolvePathAndQuery(array $server){
+    private static function resolvePathAndQuery(){
         $path   = filter_input(INPUT_SERVER, "REQUEST_URI");
 
         if(is_string($path)){
