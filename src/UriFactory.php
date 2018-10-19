@@ -109,7 +109,7 @@ class UriFactory implements UriFactoryInterface{
      * @return  UriInterface
      */
     public function createUriFromGlobal(): UriInterface{
-        return new Uri(
+        return $this->createUri(
             $this->resolveScheme()
             . "://"
             . $this->resolveAuthority()
