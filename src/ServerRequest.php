@@ -24,7 +24,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
     /**
      * @var mixed[]
      */
-    private $sereverParameters;
+    private $serverParameters;
 
     /**
      * @var UploadedFileInterface[]
@@ -51,6 +51,13 @@ class ServerRequest extends Request implements ServerRequestInterface{
      */
     private $attributes = [];
 
+    /**
+     * Constructor.
+     *
+     * @param string       $method
+     * @param UriInterface $uri
+     * @param mixed[]|null $serverParameters
+     */
     public function __construct(
         string $method,
         UriInterface $uri,
@@ -58,10 +65,18 @@ class ServerRequest extends Request implements ServerRequestInterface{
     ){
         parent::__construct($method, $uri);
 
-        $this->sereverParameters    = $serverParameters ?? $_SERVER;
+        $this->serverParameters = $serverParameters ?? $_SERVER;
     }
 
-    private static function validUploadedFiles(array $uploadedFiles, string $index = ""){
+    /**
+     * Validate uploaded files.
+     *
+     * @param array  $uploadedFiles
+     * @param string $index
+     *
+     * @return void
+     */
+    protected static function validUploadedFiles(array $uploadedFiles, string $index = ""){
         foreach($uploadedFiles as $key => $file){
             $_index = "" === $index ? $key : ($index . "." . $key);
 
@@ -85,7 +100,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function getServerParams(){
-        return $this->sereverParameters;
+        return $this->serverParameters;
     }
 
     /**
@@ -103,18 +118,6 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function withCookieParams(array $cookies){
-        // ミドルウェアがクッキーの値をパースして再設定する可能性がある
-//        foreach($cookies as $key => $val){
-//            if(!is_scalar($val)){
-//                $type   = gettype($val);
-//
-//                throw new \InvalidArgumentException(
-//                    "The cookie list must be an associative array with scalar"
-//                    . " type values. The value of index {$key} is type {$type}."
-//                );
-//            }
-//        }
-
         if($this->cookies === $cookies){
             return $this;
         }
@@ -161,7 +164,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
      * {@inheritdoc}
      */
     public function withUploadedFiles(array $uploadedFiles){
-        self::validUploadedFiles($uploadedFiles);
+        static::validUploadedFiles($uploadedFiles);
 
         if($this->uploadedFiles === $uploadedFiles){
             return $this;
@@ -190,7 +193,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
     public function withParsedBody($data){
         if(null !== $data && !is_array($data) && !is_object($data)){
             throw new \InvalidArgumentException(
-                "Parsed body must be null, array or object."
+                "Argument must be of the type null or array or object, " . gettype($data) . " given."
             );
         }
 
@@ -219,11 +222,10 @@ class ServerRequest extends Request implements ServerRequestInterface{
     public function getAttribute($name, $default = null){
         if(!is_string($name)){
             throw new \InvalidArgumentException(
-                "Attribute name must be a string"
+                "First argument must be of the type string, " . gettype($name) . " given."
             );
         }
 
-        // ??を使うと属性値がnullかつデフォルト値が非nullの場合に正しく値が取得できない。
         return array_key_exists($name, $this->attributes)
             ? $this->attributes[$name]
             : $default
@@ -238,7 +240,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
     public function withAttribute($name, $value){
         if(!is_string($name)){
             throw new \InvalidArgumentException(
-                "Attribute name must be a string"
+                "First argument must be of the type string, " . gettype($name) . " given."
             );
         }
 
@@ -263,7 +265,7 @@ class ServerRequest extends Request implements ServerRequestInterface{
     public function withoutAttribute($name){
         if(!is_string($name)){
             throw new \InvalidArgumentException(
-                "Attribute name must be a string"
+                "Argument must be of the type string, " . gettype($name) . " given."
             );
         }
 

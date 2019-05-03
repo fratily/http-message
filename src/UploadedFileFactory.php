@@ -13,8 +13,10 @@
  */
 namespace Fratily\Http\Message;
 
+use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UploadedFileInterface;
 
 /**
  *
@@ -27,30 +29,21 @@ class UploadedFileFactory implements UploadedFileFactoryInterface{
     private $streamFactory;
 
     /**
-     * ストリームファクトリを取得する
+     * Constructor.
      *
-     * @return  StreamFactoryInterface
+     * @param StreamFactoryInterface $streamFactory
      */
-    public function getStreamFactory(){
-        if(null === $this->streamFactory){
-            $this->streamFactory    = new StreamFactory();
-        }
-
-        return $this->streamFactory;
+    public function __construct(StreamFactoryInterface $streamFactory){
+        $this->streamFactory    = $streamFactory;
     }
 
     /**
-     * ストリームファクトリを設定する
+     * Get stream factory.
      *
-     * @param   StreamFactoryInterface  $factory
-     *  URIファクトリ
-     *
-     * @return  $this
+     * @return StreamFactoryInterface
      */
-    public function setStreamFactory(StreamFactoryInterface $factory){
-        $this->streamFactory    = $factory;
-
-        return $this;
+    protected function getStreamFactory(): StreamFactoryInterface{
+        return $this->streamFactory;
     }
 
     /**
@@ -73,21 +66,20 @@ class UploadedFileFactory implements UploadedFileFactoryInterface{
     }
 
     /**
+     * Create a new uploaded files.
      *
+     * @param mixed[] $files
      *
-     * @param   mixed[] $files
-     * @param   UploadedFileFactoryInterface    $factory
+     * @return UploadedFileInterface[]
      *
-     * @return  UploadedFileInterface
-     *
-     * @throws  \InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     public function createUploadedFiles(array $files){
-        $result = [];
+        $instances = [];
 
         foreach($files as $name => $value){
             if($value instanceof UploadedFileInterface){
-                $result[$name]  = $value;
+                $instances[$name]  = $value;
                 continue;
             }
 
@@ -102,22 +94,21 @@ class UploadedFileFactory implements UploadedFileFactoryInterface{
                 );
             }
 
-            $result[$name]  = isset($value["error"]) && isset($value["tmp_name"])
+            $instances[$name]  = isset($value["error"]) && isset($value["tmp_name"])
                 ? $this->createUploadedFileWithNest($value)
                 : $this->createUploadedFiles($value)
             ;
         }
 
-        return $result;
+        return $instances;
     }
 
     /**
      *
      *
-     * @param   mixed[] $value
-     *  ファイル情報連想配列
+     * @param mixed[] $value
      *
-     * @return  UploadedFileInterface
+     * @return UploadedFileInterface|UploadedFileInterface[]
      */
     private function createUploadedFileWithNest(array $value){
         if(is_array($value["error"])){
@@ -136,10 +127,9 @@ class UploadedFileFactory implements UploadedFileFactoryInterface{
     /**
      *
      *
-     * @param   mixed[] $files
-     *  ファイル情報連想配列
+     * @param mixed[] $files
      *
-     * @return  UploadedFileInterface[]
+     * @return UploadedFileInterface[]
      */
     private function createNestUploadedFile(array $files){
         $result = [];

@@ -50,10 +50,6 @@ class StderrStream extends Stream{
      * @throws  Exception\StreamUnavailableException
      */
     public function tell(){
-        if($this->resource === null){
-            throw new Exception\StreamUnavailableException;
-        }
-
         return 0;
     }
 
@@ -75,7 +71,7 @@ class StderrStream extends Stream{
      * {@inheritdoc}
      */
     public function isWritable(){
-        if($this->resource !== null){
+        if(null == $this->resource){
             return true;
         }
 

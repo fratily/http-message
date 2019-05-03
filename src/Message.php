@@ -17,7 +17,7 @@ use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\StreamInterface;
 
 /**
- * @todo    ヘッダーのHostは必ず1行目になければならない（外部に任せるかこちらでやってしまうか）
+ *
  */
 class Message implements MessageInterface{
 
@@ -31,8 +31,13 @@ class Message implements MessageInterface{
 
     const REGEX_HEADER_NAME     = "/\A[0-9A-Z-!#$%&'*+.^_`|~]+\z/i";
 
-    //  改行を含む値はRFC7230的には非推奨
+    // Value of containing line breaks are deprecated in RFC 7230.
     const REGEX_HEADER_VALUE    = "/\A([\x21-\x7e]([\x20\x09]+[\x21-\x7e])?)*\z/";
+
+    /**
+     * @var string
+     */
+    private $version    = self::DEFAULT_PROTOCOL_VERSION;
 
     /**
      * @var string[][]
@@ -40,70 +45,83 @@ class Message implements MessageInterface{
     private $headers    = [];
 
     /**
-     * @var string[]
-     */
-    private $headerKeys = [];
-
-    /**
      * @var StreamInterface
      */
     private $body       = null;
 
     /**
-     * @var string
+     * Get normalized header key.
+     *
+     * `content-type` to `Content-Type`.
+     *
+     * @param string $name
+     *
+     * @return string
      */
-    private $version;
+    protected static function getNormalizedHeaderKey(string $name){
+        static $convertCache = [];
 
-    /**
-     * ヘッダーキーを取得する
-     *
-     * @param   string  $name
-     *  ヘッダー名
-     *
-     * @return  string
-     */
-    private static function getHeaderKey(string $name){
-        return strtolower($name);
+        if(!isset($convertCache[$name])){
+            $convertCache[$name]    = ucfirst(ucwords($name, "-"));
+        }
+
+        return $convertCache[$name];
     }
 
     /**
-     * ヘッダーの名前と値のバリデーションを行う
+     * Validate header name.
      *
-     * @param   mixed   $name
-     *  ヘッダー名
-     * @param   mixed   $value
-     *  ヘッダーの値
+     * @param string $name
      *
-     * @return  void
+     * @return void
      *
-     * @throws  \InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
-    private static function withHeaderValidation($name, $value){
-        if(!is_string($name) || 1 !== preg_match(static::REGEX_HEADER_NAME, $name)){
-            throw new \InvalidArgumentException(
-                ""
-            );
-        }
+    protected static function validateHeaderName(string $name){
+        static $validCache = [];
 
-        if(!is_string($value) && !is_array($value)){
-            throw new \InvalidArgumentException(
-                ""
-            );
-        }
-
-        $value  = is_string($value) ? [$value] : $value;
-
-        foreach($value as $_value){
-            if(1 !== preg_match(static::REGEX_HEADER_VALUE, $_value)){
+        if(!isset($validCache[$name])){
+            if(1 !== preg_match(static::REGEX_HEADER_NAME, $name)){
                 throw new \InvalidArgumentException(
-                    ""
+                    "Invalid Header name given."
                 );
             }
         }
+
+        $validCache[$name]  = true;
     }
 
-    public function __construct(){
-        $this->version  = static::DEFAULT_PROTOCOL_VERSION;
+    /**
+     * Validate header value.
+     *
+     * @param array $values
+     *
+     * @return void
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected static function validateHeaderValue(array $values){
+        static $validCache = [];
+
+        foreach($values as $index => $value){
+            if(!is_string($value)){
+                throw new \InvalidArgumentException(
+                    "Header value must be of the type string array, "
+                    . gettype($value)
+                    . " given at index of {$index}."
+                );
+            }
+
+            if(!isset($validCache[$value])){
+                if(1 !== preg_match(static::REGEX_HEADER_VALUE, $value)){
+                    throw new \InvalidArgumentException(
+                        "Invalid Header value given at index of {$index}."
+                    );
+                }
+            }
+
+            $validCache[$value]  = true;
+        }
     }
 
     /**
@@ -119,13 +137,17 @@ class Message implements MessageInterface{
     public function withProtocolVersion($version){
         if(!is_string($version)){
             throw new \InvalidArgumentException(
-                ""
+                "Argument must be of the type string, " . gettype($version) . " given."
             );
         }
 
         if(!array_key_exists($version, self::PROTOCOL_VERSION)){
             throw new \InvalidArgumentException(
-                ""
+                "The protocol version "
+                . $version
+                ." is not allowed. allow version is ["
+                . implode(", ", static::PROTOCOL_VERSION)
+                . "]."
             );
         }
 
@@ -150,17 +172,29 @@ class Message implements MessageInterface{
      * {@inheritdoc}
      */
     public function getHeader($name){
-        if(!is_string($name) || !$this->hasHeader($name)){
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "Argument must be of the type string, " . gettype($name) . " given."
+            );
+        }
+
+        if(!$this->hasHeader($name)){
             return [];
         }
 
-        return $this->headers[$this->headerKeys[self::getHeaderKey($name)]];
+        return $this->headers[static::getNormalizedHeaderKey($name)];
     }
 
     /**
      * {@inheritdoc}
      */
     public function getHeaderLine($name){
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "Argument must be of the type string, " . gettype($name) . " given."
+            );
+        }
+
         return implode(",", $this->getHeader($name));
     }
 
@@ -169,28 +203,42 @@ class Message implements MessageInterface{
      */
     public function hasHeader($name){
         if(!is_string($name)){
-            return false;
+            throw new \InvalidArgumentException(
+                "Argument must be of the type string, " . gettype($name) . " given."
+            );
         }
 
-        return array_key_exists(self::getHeaderKey($name), $this->headerKeys);
+        return array_key_exists(static::getNormalizedHeaderKey($name), $this->headers);
     }
 
     /**
      * {@inheritdoc}
      */
     public function withHeader($name, $value){
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "First argument must be of the type string, " . gettype($name) . " given."
+            );
+        }
+
+        if(!is_string($value) && !is_array($value)){
+            throw new \InvalidArgumentException(
+                "Second argument must be of the type string or array, " . gettype($value) . " given."
+            );
+        }
+
+        $value  = (array)$value;
+
         if($this->hasHeader($name) && $this->getHeader($name) === $value){
             return $this;
         }
 
-        static::withHeaderValidation($name, $value);
+        static::validateHeaderName($name);
+        static::validateHeaderValue($value);
 
         $clone  = clone $this;
-        $key    = self::getHeaderKey($name);
-        $value  = is_string($value) ? [$value] : $value;
 
-        $clone->headerKeys[$key] = $name;
-        $clone->headers[$name]   = array_values($value);
+        $clone->headers[static::getNormalizedHeaderKey($name)]  = array_values($value);
 
         return $clone;
     }
@@ -199,18 +247,32 @@ class Message implements MessageInterface{
      * {@inheritdoc}
      */
     public function withAddedHeader($name, $value){
-        if(!$this->hasHeader($name)){
-            return $this->withHeader($name, $value);
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "First argument must be of the type string, " . gettype($name) . " given."
+            );
         }
 
-        static::withHeaderValidation($name, $value);
+        if(!is_string($value) && !is_array($value)){
+            throw new \InvalidArgumentException(
+                "Second argument must be of the type string or array, " . gettype($value) . " given."
+            );
+        }
+
+        $value  = (array)$value;
+
+        if($this->hasHeader($name) && $this->getHeader($name) === $value){
+            return $this;
+        }
+
+        static::validateHeaderName($name);
+        static::validateHeaderValue($value);
 
         $clone  = clone $this;
-        $key    = self::getHeaderKey($name);
 
-        $clone->headers[$this->headerKeys[$key]]    = array_merge(
-            $clone->headers[$this->headerKeys[$key]],
-            array_values(is_string($value) ? [$value] : $value)
+        $clone->headers[static::getNormalizedHeaderKey($name)]  = array_merge(
+            $this->getHeader($name),
+            array_values($value)
         );
 
         return $clone;
@@ -220,17 +282,19 @@ class Message implements MessageInterface{
      * {@inheritdoc}
      */
     public function withoutHeader($name){
+        if(!is_string($name)){
+            throw new \InvalidArgumentException(
+                "Argument must be of the type string, " . gettype($name) . " given."
+            );
+        }
+
         if(!$this->hasHeader($name)){
             return $this;
         }
 
-        static::withHeaderValidation($name, []);
-
         $clone  = clone $this;
-        $key    = self::getHeaderKey($name);
 
-        unset($clone->headers[$this->headerKeys[$key]]);
-        unset($clone->headerKeys[$key]);
+        unset($clone->headers[static::getNormalizedHeaderKey($name)]);
 
         return $clone;
     }
@@ -254,7 +318,8 @@ class Message implements MessageInterface{
             return $this;
         }
 
-        $clone          = clone $this;
+        $clone  = clone $this;
+
         $clone->body    = $body;
 
         return $clone;

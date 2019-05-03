@@ -124,7 +124,7 @@ abstract class HttpStatus extends \Exception{
         $this->statusCode   = (400 <= static::STATUS_CODE && static::STATUS_CODE < 600)
             ? static::STATUS_CODE : self::STATUS_CODE;
 
-        $this->statusPhrase = self::STATUS_PHRASE ?? self::PHRASES[$this->statusCode] ?? "Undefine";
+        $this->statusPhrase = self::STATUS_PHRASE ?? self::PHRASES[$this->statusCode] ?? "Undefined";
     }
 
     /**

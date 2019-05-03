@@ -27,7 +27,8 @@ class Request extends Message implements RequestInterface{
         "POST"      => true,
         "PUT"       => true,
         "PATCH"     => true,
-        "DELETE"    => true
+        "DELETE"    => true,
+        "OPTIONS"   => true,
     ];
 
     /**
@@ -41,27 +42,23 @@ class Request extends Message implements RequestInterface{
     private $uri;
 
     /**
-     * Constructor
+     * Constructor.
      *
-     * @param   string  $method
-     *  HTTPリクエストメソッド
-     * @param   UriInterface    $uri
-     *  リクエストURI
+     * @param string       $method
+     * @param UriInterface $uri
      */
-    public function __construct(
-        string $method,
-        UriInterface $uri
-    ){
+    public function __construct(string $method, UriInterface $uri){
         if(!array_key_exists($method, static::ALLOW_HTTP_METHODS)){
             throw new \InvalidArgumentException(
-                ""
+                "The HTTP request method {$method}"
+                ." is not allowed. allow methods is ["
+                . implode(", ", static::ALLOW_HTTP_METHODS)
+                . "]."
             );
         }
 
         $this->method   = $method;
         $this->uri      = $uri;
-
-        parent::__construct();
     }
 
     /**
@@ -70,11 +67,7 @@ class Request extends Message implements RequestInterface{
     public function getRequestTarget(){
         return
             $this->uri->getPath()
-            . (
-                "" === $this->uri->getQuery()
-                    ? ""
-                    : "?" . $this->uri->getQuery()
-            )
+            . ("" === $this->uri->getQuery() ? "" : "?" . $this->uri->getQuery())
         ;
     }
 
@@ -84,24 +77,25 @@ class Request extends Message implements RequestInterface{
     public function withRequestTarget($requestTarget){
         if(!is_string($requestTarget)){
             throw new \InvalidArgumentException(
-                ""
+                "Argument must be of the type string, " . gettype($requestTarget) . " given."
             );
         }
 
-        $path   = $requestTarget;
-        $query  = "";
+        $parts      = explode("?", $requestTarget, 2);
+        $parts[1]   = $parts[1] ?? "";
 
-        if(false !== ($pos = strpos($requestTarget, "?"))){
-            $path   = substr($requestTarget, 0, $pos);
-            $query  = substr($requestTarget, $pos + 1);
-        }
-
-        if($this->uri->getPath() === $path && $this->uri->getQuery() === $query){
+        if(
+            $this->uri->getPath() === $parts[0]
+            && $this->uri->getQuery() === $parts[1]
+        ){
             return $this;
         }
 
         $clone      = clone $this;
-        $clone->uri = $clone->uri->withPath($path)->withQuery($query);
+        $clone->uri = $clone->uri
+            ->withPath($parts[0])
+            ->withQuery($parts[1])
+        ;
 
         return $clone;
     }
@@ -113,32 +107,22 @@ class Request extends Message implements RequestInterface{
         return $this->method;
     }
 
-    protected function setMethod(string $method){
-        if(!array_key_exists($method, static::ALLOW_HTTP_METHODS)){
-            $allow  = implode(", ", static::ALLOW_HTTP_METHODS);
-
-            throw new \InvalidArgumentException(
-                "Method '{$method}' can not be used,"
-                . " because it is not included in the allowed method ({$allow})."
-            );
-        }
-
-        $this->method   = $method;
-
-        return $this;
-    }
-
     /**
      * {@inheritdoc}
      */
     public function withMethod($method){
         if(!is_string($method)){
-            throw new \InvalidArgumentException("Method must be a string");
+            throw new \InvalidArgumentException(
+                "Argument must be of the type string, " . gettype($method) . " given."
+            );
         }
 
         if(!array_key_exists($method, static::ALLOW_HTTP_METHODS)){
             throw new \InvalidArgumentException(
-                ""
+                "The HTTP request method {$method}"
+                ." is not allowed. allow methods is ["
+                . implode(", ", static::ALLOW_HTTP_METHODS)
+                . "]."
             );
         }
 
@@ -165,26 +149,25 @@ class Request extends Message implements RequestInterface{
     public function withUri(UriInterface $uri, $preserveHost = false){
         if(!is_bool($preserveHost)){
             throw new \InvalidArgumentException(
-                "The host header preserve flag must be boolean."
+                "Second argument must be of the type bool, " . gettype($preserveHost) . " given."
             );
         }
 
-        if($this->uri === $uri){
-            return $this;
-        }
+        $resultInstance = $this;
 
-        $clone      = clone $this;
-        $clone->uri = $uri;
+        if($this->uri !== $uri){
+            $resultInstance         = clone $this;
+            $resultInstance->uri    = $uri;
+        }
 
         if(!$preserveHost){
             if("" === $uri->getHost()){
                 throw new \InvalidArgumentException(
-                    "Host is not defined in URI instance,"
-                    . " host header can not be changed."
+                    "Host is not defined in URI instance,  host header can not be changed."
                 );
             }
 
-            $clone  = $clone->withHeader(
+            $resultInstance = $resultInstance->withHeader(
                 "Host",
                 null === $uri->getPort()
                     ? $uri->getHost()
@@ -192,6 +175,6 @@ class Request extends Message implements RequestInterface{
             );
         }
 
-        return $clone;
+        return $resultInstance;
     }
 }

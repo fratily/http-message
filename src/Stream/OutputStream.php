@@ -47,7 +47,7 @@ class OutputStream extends Stream{
      * @throws  Exception\StreamUnavailableException
      */
     public function tell(){
-        if($this->resource === null){
+        if(null == $this->resource){
             throw new Exception\StreamUnavailableException;
         }
 

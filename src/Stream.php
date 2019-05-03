@@ -14,6 +14,7 @@
 namespace Fratily\Http\Message;
 
 use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  *
@@ -23,28 +24,24 @@ class Stream implements StreamInterface{
     const EXCEPTION_MSG_UNAVAILABLE = "The stream is already closed.";
     const EXCEPTION_MSG_UNREADABLE  = "Attempt to read to unreadable resource.";
     const EXCEPTION_MSG_UNSEEKABLE  = "Attempt to seek to unseekable resource.";
-    const EXCEPTION_MSG_UNWRITABLE  = "Attempt to write to writable resource";
+    const EXCEPTION_MSG_UNWRITABLE  = "Attempt to write to unwritable resource";
 
     /**
      * @var resource|null
      * @todo    このクラスを継承したクラスにもこれへのアクセスを許可する
      *          ただし、型はきちんと守らせる必要がある
      */
-    private $resource;
+    protected $resource;
 
     /**
-     * Constructor
+     * Constructor.
      *
-     * @param   resource    $resource
-     *  ストリームリソース
+     * @param resource $resource
      */
     public function __construct($resource){
-        if(
-            !is_resource($resource)
-            || "stream" !== get_resource_type($resource)
-        ){
+        if(!is_resource($resource) || "stream" !== get_resource_type($resource)){
             throw new \InvalidArgumentException(
-                "It must be a stream type resource."
+                "Argument must be of the type stream resource, " . gettype($resource) . " given."
             );
         }
 
@@ -59,20 +56,16 @@ class Stream implements StreamInterface{
     }
 
     /**
-     * リソースを登録する
+     * Attach resource.
      *
-     * @param   resource    $resource
-     *  ストリームリソース
+     * @param resource $resource
      *
      * @return  void
      */
     public function attach($resource){
-        if(
-            !is_resource($resource)
-            || "stream" !== get_resource_type($resource)
-        ){
+        if(!is_resource($resource) || "stream" !== get_resource_type($resource)){
             throw new \InvalidArgumentException(
-                "It must be a stream type resource."
+                "Argument must be of the type stream resource, " . gettype($resource) . " given."
             );
         }
 
@@ -94,10 +87,10 @@ class Stream implements StreamInterface{
      * {@inheritdoc}
      */
     public function detach(){
-        $return         = $this->resource;
+        $resource       = $this->resource;
         $this->resource = null;
 
-        return $return;
+        return $resource;
     }
 
     /**

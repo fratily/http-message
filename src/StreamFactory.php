@@ -32,12 +32,10 @@ class StreamFactory implements StreamFactoryInterface{
     private $prefix;
 
     /**
-     * Constructor
+     * Constructor.
      *
-     * @param   string|null  $dir
-     *  Path of temporary directory.
-     * @param   string  $prefix
-     *  Temporary file name prefix.
+     * @param string|null $dir    Path of temporary directory.
+     * @param string      $prefix Temporary file name prefix.
      */
     public function __construct(string $dir = null, string $prefix = ""){
         if(

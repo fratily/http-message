@@ -31,21 +31,14 @@ class Response extends Message implements ResponseInterface{
     private $reasonPhrase;
 
     /**
-     * Constructor
+     * Constructor.
      *
-     * @param   int $code
-     *  HTTPレスポンスステータスコード
-     * @param   string  $reasonPhrase
-     *  HTTPレスポンスステータスメッセージ
+     * @param int    $statusCode
+     * @param string $reasonPhrase
      */
-    public function __construct(
-        int $code = 200,
-        string $reasonPhrase = null
-    ){
-        $this->code         = $code;
+    public function __construct(int $statusCode = 200, string $reasonPhrase = null){
+        $this->code         = $statusCode;
         $this->reasonPhrase = $reasonPhrase;
-
-        parent::__construct();
     }
 
     /**
@@ -72,19 +65,19 @@ class Response extends Message implements ResponseInterface{
     public function withStatus($code, $reasonPhrase = ""){
         if(!is_int($code)){
             throw new \InvalidArgumentException(
-                "The HTTP status code must be integer."
+                "First argument must be of the type int, " . gettype($code) . " given."
             );
         }
 
         if(!is_string($reasonPhrase)){
             throw new \InvalidArgumentException(
-                "The HTTP status reason phrase must be string."
+                "Second argument must be of the type string, " . gettype($reasonPhrase) . " given."
             );
         }
 
-        if(!array_key_exists($code, Status\HttpStatus::STATUS_CODE)){
+        if(100 > $code || 599 < $code){
             throw new \InvalidArgumentException(
-                "Status code {$code} can not be used."
+                "HTTP status code is between 100 and 599, {$code} given."
             );
         }
 
@@ -94,15 +87,9 @@ class Response extends Message implements ResponseInterface{
             return $this;
         }
 
-        $clone  = clone $this;
-
-        if($clone->code !== $code){
-            $clone->code    = $code;
-        }
-
-        if($clone->reasonPhrase !== $reasonPhrase){
-            $clone->reasonPhrase    = $reasonPhrase;
-        }
+        $clone                  = clone $this;
+        $clone->code            = $code;
+        $clone->reasonPhrase    = $reasonPhrase;
 
         return $clone;
     }

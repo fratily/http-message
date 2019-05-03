@@ -29,30 +29,21 @@ class ServerRequestFactory implements ServerRequestFactoryInterface{
     private $uriFactory;
 
     /**
-     * URIファクトリを取得する
+     * Constructor.
      *
-     * @return  UriFactoryInterface
+     * @param UriFactoryInterface $uriFactory
      */
-    public function getUriFactory(){
-        if(null === $this->uriFactory){
-            $this->uriFactory   = new UriFactory();
-        }
-
-        return $this->uriFactory;
+    public function __construct(UriFactoryInterface $uriFactory){
+        $this->uriFactory   = $uriFactory;
     }
 
     /**
-     * URIファクトリを設定する
+     * Get uri factory.
      *
-     * @param   UriFactoryInterface $factory
-     *  URIファクトリ
-     *
-     * @return  $this
+     * @return UriFactoryInterface
      */
-    public function setUriFactory(UriFactoryInterface $factory){
-        $this->uriFactory   = $factory;
-
-        return $this;
+    protected function getUriFactory(){
+        return $this->uriFactory;
     }
 
     /**
@@ -65,19 +56,17 @@ class ServerRequestFactory implements ServerRequestFactoryInterface{
         $uri,
         array $serverParams = []
     ): ServerRequestInterface{
-        if(is_string($uri)){
-            $uri    = $this->getUriFactory()->createUri($uri);
-        }
-
-        if(!is_subclass_of($uri, UriInterface::class)){
+        if(!is_string($uri) && !is_subclass_of($uri, UriInterface::class)){
             $class  = UriInterface::class;
-
             throw new \InvalidArgumentException(
-                "URI must be a string or an instance of a class"
-                . " that implements {$class}."
+                "Second argument must be of the type string or {$class}, " . gettype($uri) . " given."
             );
         }
 
-        return new ServerRequest($method, $uri, $serverParams);
+        return new ServerRequest(
+            $method,
+            is_string($uri) ? $this->getUriFactory()->createUri($uri) : $uri,
+            $serverParams
+        );
     }
 }

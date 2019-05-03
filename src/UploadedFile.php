@@ -13,8 +13,11 @@
  */
 namespace Fratily\Http\Message;
 
+use Fratily\Http\Message\Exception\UploadErrorException;
+use Fratily\Http\Message\Exception\UploadFileIsMovedException;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  *
@@ -33,7 +36,7 @@ class UploadedFile implements UploadedFileInterface{
     ];
 
     /**
-     * @var StreamInterface|null
+     * @var StreamInterface
      */
     private $stream;
 
@@ -63,15 +66,15 @@ class UploadedFile implements UploadedFileInterface{
     private $moved  = false;
 
     /**
-     * Constructor
+     * Constructor.
      *
-     * @param   string|resource|StreamInterface  $file
-     * @param   int $size
-     * @param   int $error
-     * @param   string  $clientFilename
-     * @param   string  $clientMediaType
+     * @param StreamInterface $stream
+     * @param int             $size
+     * @param int             $error
+     * @param string          $clientFilename
+     * @param string          $clientMediaType
      *
-     * @throws  \InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     public function __construct(
         StreamInterface $stream,
@@ -80,14 +83,6 @@ class UploadedFile implements UploadedFileInterface{
         string $clientFilename = null,
         string $clientMediaType = null
     ){
-        if("plainfile" !== $stream->getMetadata("wrapper_type")){
-            throw new \InvalidArgumentException();
-        }
-
-        if(!is_uploaded_file($stream->getMetadata("uri"))){
-            throw new \InvalidArgumentException;
-        }
-
         if(!array_key_exists($error, static::ERROR_MAP)){
             throw new \InvalidArgumentException();
         }
@@ -102,7 +97,8 @@ class UploadedFile implements UploadedFileInterface{
     /**
      * {@inheritdoc}
      *
-     * @throws  Exception\UploadedFileException
+     * @throws UploadErrorException
+     * @throws UploadFileIsMovedException
      */
     public function getStream(){
         if(UPLOAD_ERR_OK !== $this->error){

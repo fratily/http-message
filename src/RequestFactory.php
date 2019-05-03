@@ -24,64 +24,42 @@ use Psr\Http\Message\UriFactoryInterface;
 class RequestFactory implements RequestFactoryInterface{
 
     /**
-     * @var UriFactoryInterface|null
+     * @var UriFactoryInterface
      */
     private $uriFactory;
 
     /**
-     * Constructor
+     * Constructor.
      *
-     * @param   UriFactoryInterface $uriFactory
-     *  URIファクトリー
+     * @param UriFactoryInterface $uriFactory
      */
-    public function __construct(UriFactoryInterface $uriFactory = null){
+    public function __construct(UriFactoryInterface $uriFactory){
         $this->uriFactory   = $uriFactory;
     }
 
     /**
-     * URIファクトリを取得する
+     * Get uri factory.
      *
-     * @return  UriFactoryInterface
+     * @return UriFactoryInterface
      */
-    public function getUriFactory(){
-        if(null === $this->uriFactory){
-            $this->uriFactory   = new UriFactory();
-        }
-
+    protected function getUriFactory(){
         return $this->uriFactory;
-    }
-
-    /**
-     * URIファクトリを登録する
-     *
-     * @param   UriFactoryInterface $uriFactory
-     *  URIファクトリ
-     *
-     * @return  $this;
-     */
-    public function setUriFactory(UriFactoryInterface $uriFactory){
-        $this->uriFactory   = $uriFactory;
-
-        return $this;
     }
 
     /**
      * {@inheritdoc}
      */
     public function createRequest(string $method, $uri): RequestInterface{
-        if(is_string($uri)){
-            $uri    = $this->getUriFactory()->createUri($uri);
-        }
-
-        if(!is_subclass_of($uri, UriInterface::class)){
+        if(!is_string($uri) && !is_subclass_of($uri, UriInterface::class)){
             $class  = UriInterface::class;
-
             throw new \InvalidArgumentException(
-                "URI must be a string or an instance of a class"
-                . " that implements {$class}."
+                "Second argument must be of the type string or {$class}, " . gettype($uri) . " given."
             );
         }
 
-        return new Request($method, $uri);
+        return new Request(
+            $method,
+            is_string($uri) ? $this->getUriFactory()->createUri($uri) : $uri
+        );
     }
 }

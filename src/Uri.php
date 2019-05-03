@@ -194,7 +194,7 @@ class Uri implements UriInterface{
      */
     public function withScheme($scheme){
         if(!is_string($scheme)){
-            throw new InvalidArgumentException();
+            throw new \InvalidArgumentException();
         }
 
         if("" !== $scheme && 1 !== preg_match(static::REGEX_SCHEME, $scheme)){
@@ -239,11 +239,11 @@ class Uri implements UriInterface{
      */
     public function withUserInfo($user, $password = null){
         if(!is_string($user)){
-            throw new InvalidArgumentException();
+            throw new \InvalidArgumentException();
         }
 
         if(null !== $password && !is_string($password)){
-            throw new InvalidArgumentException();
+            throw new \InvalidArgumentException();
         }
 
         $password   = "" === $password ? null : $password;

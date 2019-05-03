@@ -50,13 +50,13 @@ class Emitter implements EmitterInterface{
      * @return  void
      */
     protected function emitHttpStatus(ResponseInterface $response){
-        $phrese = $response->getReasonPhrase();
+        $phrase = $response->getReasonPhrase();
 
         header(
             sprintf("HTTP/%s %d%s",
                 $response->getProtocolVersion(),
                 $response->getStatusCode(),
-                "" === $phrese ? "" : " {$phrese}"
+                "" === $phrase ? "" : " {$phrase}"
             )
         );
     }
